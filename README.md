@@ -35,7 +35,7 @@ Simple JavaScript Bitcoin helper library (built on [BitcoinJS](http://bitcoinjs.
 	});
 ```
 
-### Export wallet (to [WIF](https://en.bitcoin.it/wiki/Wallet_import_format))
+### Export Wallet (to [WIF](https://en.bitcoin.it/wiki/Wallet_import_format))
 
 ```
 	wallet.key.toWIF()
