@@ -31,6 +31,8 @@ function setExchangeRates (request) {
 	for (var k in exchangeRates) {
 		exchangeRates[k]	= exchangeRates[k].last;
 	}
+
+	exchangeRates.BTC	= 1;
 }
 
 function getGetExchangeRates (isAsync) {
@@ -73,7 +75,7 @@ Wallet	= function (wif, localCurrency) {
 		wif				= null;
 	}
 
-	this.localCurrency	= localCurrency || 'USD';
+	this.localCurrency	= localCurrency || 'BTC';
 	this.key			= !wif ? Bitcoin.ECKey.makeRandom() : wif.toWIF ? wif : Bitcoin.ECKey.fromWIF(wif);
 	this.address		= this.key.pub.getAddress().toString();
 };
