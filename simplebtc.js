@@ -26,13 +26,16 @@ var bitcore	= require('bitcore');
 var exchangeRates;
 
 function setExchangeRates (request) {
-	exchangeRates	= JSON.parse(request.responseText.replace(/\s/g, '').replace(/,\}$/, '}'));
+	try {
+		exchangeRates	= JSON.parse(request.responseText.replace(/\s/g, '').replace(/,\}$/, '}'));
 
-	for (var k in exchangeRates) {
-		exchangeRates[k]	= exchangeRates[k].last;
+		for (var k in exchangeRates) {
+			exchangeRates[k]	= exchangeRates[k].last;
+		}
+
+		exchangeRates.BTC	= 1;
 	}
-
-	exchangeRates.BTC	= 1;
+	catch (e) {}
 }
 
 function getGetExchangeRates (isAsync) {
@@ -91,7 +94,7 @@ Wallet.prototype.getBalance	= function (callback) {
 
 	request.onreadystatechange	= function () {
 		if (request.readyState == 4 && request.status == 200) {
-			var balance	= parseInt(request.responseText, 10);
+			var balance	= parseInt(request.responseText || '0', 10);
 
 			callback({btc: balance, local: balance * exchangeRates[self.localCurrency]});
 		}
@@ -113,7 +116,14 @@ Wallet.prototype.getTransactionHistory	= function (callback) {
 	request.onreadystatechange	= function () {
 		if (request.readyState == 4 && request.status == 200) {
 			var exchangeRate	= exchangeRates[self.localCurrency];
-			var transactions	= JSON.parse(request.responseText).txs;
+			
+			var transactions;
+			try {
+				transactions	= JSON.parse(request.responseText).txs || [];
+			}
+			catch (e) {
+				transactions	= [];
+			}
 
 			var i;
 			for (i = 0 ; i < transactions.length && transactions[i].confirmations < 6 ; ++i);
@@ -243,7 +253,7 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 		unspentRequest.onreadystatechange	= function () {
 			if (unspentRequest.readyState == 4 && unspentRequest.status == 200) {
 				var bitcoreTransaction	= new bitcore.TransactionBuilder()
-					.setUnspent(JSON.parse(unspentRequest.responseText).unspent_outputs)
+					.setUnspent(JSON.parse(unspentRequest.responseText).unspent_outputs || [])
 					.setOutputs([{
 						address: new bitcore.Address(
 							recipientAddress.address ?
