@@ -144,7 +144,7 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 
 	self.getBalance(function (balance) {
 		if (amount > balance.local) {
-			callback('Insufficient funds');
+			callback && callback('Insufficient funds');
 			return;
 		}
 
