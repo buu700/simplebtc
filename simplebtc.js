@@ -26,7 +26,7 @@ var bitcore	= require('bitcore');
 var exchangeRates;
 
 function setExchangeRates (request) {
-	exchangeRates	= JSON.parse(request.response);
+	exchangeRates	= JSON.parse(request.responseText.replace(/\s/g, '').replace(/,\}$/, '}'));
 
 	for (var k in exchangeRates) {
 		exchangeRates[k]	= exchangeRates[k].last;
@@ -75,8 +75,8 @@ Wallet	= function (wif, localCurrency) {
 		wif				= null;
 	}
 
-	this.localCurrency	= localCurrency || 'BTC';
-	this.key			= !wif ? Bitcoin.ECKey.makeRandom() : wif.toWIF ? wif : Bitcoin.ECKey.fromWIF(wif);
+	this.localCurrency	= localCurrency || (wif && wif.localCurrency) || 'BTC';
+	this.key			= !wif ? Bitcoin.ECKey.makeRandom() : wif.toWIF ? wif : wif.key ? wif.key : Bitcoin.ECKey.fromWIF(wif);
 	this.address		= this.key.pub.getAddress().toString();
 };
 
@@ -113,15 +113,22 @@ Wallet.prototype.getTransactionHistory	= function (callback) {
 	request.onreadystatechange	= function () {
 		if (request.readyState == 4 && request.status == 200) {
 			var exchangeRate	= exchangeRates[self.localCurrency];
-			var transactions	= JSON.parse(request.responseText).txs.filter(function (tx) { return tx.confirmations >= 6 });
+			var transactions	= JSON.parse(request.responseText).txs;
 
-			for (var i = 0 ; i < transactions.length ; ++i) {
+			var i;
+			for (i = 0 ; i < transactions.length && transactions[i].confirmations < 6 ; ++i);
+			transactions	= transactions.slice(i);
+
+			for (i = 0 ; i < transactions.length ; ++i) {
 				var transaction	= transactions[i];
 
 				transaction.valueInLocal	= transaction.valueIn * exchangeRate;
 				transaction.valueOutLocal	= transaction.valueOut * exchangeRate;
 
+				transaction.wasSentByMe		= false;
+
 				for (var j = 0 ; j < transaction.vin ; ++j) {
+					transaction.wasSentByMe			= transaction.wasSentByMe || transaction.vin[j].addr == self.address;
 					transaction.vin[j].valueLocal	= transaction.vin[j].value * exchangeRate;
 				}
 
@@ -136,6 +143,89 @@ Wallet.prototype.getTransactionHistory	= function (callback) {
 
 	request.open('GET', 'http://insight.bitpay.com/api/txs/?address=' + self.address, true);
 	request.send();
+};
+
+Wallet.prototype.onReceive	= function (callback) {
+	if (!callback) {
+		return;
+	}
+
+	var self	= this;
+
+	var previousTransactions	= {};
+	var previousTransactionsKey	= 'simplebtcPreviousTransactions' + self.address;
+	var persistPreviousTransactions;
+	var nodePersist;
+
+	if (localStorage) {
+		if (localStorage[previousTransactionsKey]) {
+			previousTransactions	= JSON.parse(localStorage[previousTransactionsKey]);
+		}
+
+		persistPreviousTransactions	= function () {
+			localStorage[previousTransactionsKey]	= JSON.stringify(previousTransactions);
+		};
+	}
+	else if (require && (nodePersist = require('node-persist'))) {
+		nodePersist.initSync();
+
+		previousTransactions	= nodePersist.getItem(previousTransactionsKey) || previousTransactions;
+
+		persistPreviousTransactions	= function () {
+			nodePersist.setItem(previousTransactionsKey, previousTransactions);
+		};
+	}
+
+	var processReceiptLock	= false;
+
+	function processReceipt () {
+		if (processReceiptLock) {
+			return;
+		}
+
+		processReceiptLock	= true;
+
+		self.getTransactionHistory(function (transactions) {
+			try {
+				for (var i = 0 ; i < transactions.length ; ++i) {
+					var transaction	= transactions[i];
+					var txid		= transaction.txid;
+
+					if (!previousTransactions[txid]) {
+						if (!transaction.wasSentByMe) {
+							callback(transaction);
+						}
+
+						previousTransactions[txid]	= true;
+					}
+				}
+			}
+			finally {
+				processReceiptLock	= false;
+				persistPreviousTransactions && persistPreviousTransactions();
+			}
+		});
+	}
+
+	function setProcessReceiptInterval () {
+		setInterval(processReceipt, 300000);
+	}
+
+	if (Object.keys(previousTransactions).length > 0) {
+		processReceipt();
+		setProcessReceiptInterval();
+	}
+	else {
+		self.getTransactionHistory(function (initialTransactionHistory) {
+			for (var i = 0 ; i < initialTransactionHistory.length ; ++i) {
+				previousTransactions[initialTransactionHistory[i].txid]	= true;
+			}
+
+			persistPreviousTransactions && persistPreviousTransactions();
+
+			setProcessReceiptInterval();
+		});
+	}
 };
 
 /* TODO: Figure out what to return in the callback based on whatever pushtx returns */

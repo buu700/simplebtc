@@ -27,6 +27,16 @@ Simple JavaScript Bitcoin helper library (built on [BitcoinJS](http://bitcoinjs.
 	});
 ```
 
+### Handle Receiving Money
+
+```
+	wallet.onReceive(function (transaction) {
+
+	});
+```
+
+Note: This will try to use browser local storage or [node-persist](https://github.com/simonlast/node-persist) to log previous transactions. If unavailable, the event will only be triggered by transactions which occur after this method was called.
+
 ### Send Money
 
 ```
