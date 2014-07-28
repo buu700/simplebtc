@@ -13,15 +13,24 @@ Simple JavaScript Bitcoin helper library (built on [BitcoinJS](http://bitcoinjs.
 ### Constructor
 
 ```
-	var wallet = new Wallet(/* [WIF string], [local currency code] */);
+	var wallet = new Wallet(/* {
+		localCurrency: 'USD',
+		wif: 'Kzv6tgLee7NbNhv1Ch4kLqH8BpLHtHVEGnevKpCQ3wMq7drMjg14',
+		address: '1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW'
+	} */);
 ```
+
+If a [WIF](https://en.bitcoin.it/wiki/Wallet_import_format) is specified, it will be used to derive the private key and address, and money may be sent from the wallet.
+
+Otherwise, an address may be specified, in which case no private key will be generated and the wallet will be read-only.
+
+If neither a WIF nor an address is specified, a new wallet with a new private key and address will be generated. This will not be read-only, but it will start off with a balance of 0 BTC.
 
 ### Balance
 
 ```
 	wallet.getBalance(function (balance) {
-		// balance.btc == 0.0482
-		// balance.local == 30
+		// balance == {btc: 0.0482, local: 30}
 	});
 ```
 
@@ -29,7 +38,13 @@ Simple JavaScript Bitcoin helper library (built on [BitcoinJS](http://bitcoinjs.
 
 ```
 	wallet.getTransactionHistory(function (transactions) {
-
+		/* transactions == [{
+			amount: 8.0606848794,
+			senders: ['13vexxX79cPv9UheXKHtPU3aefBX1zCv6R'],
+			recipients: ['1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW'],
+			time: Fri Jul 25 2014 21:16:09 GMT-0400 (EDT),
+			wasSentByMe: false
+		}, ...] */
 	});
 ```
 
@@ -46,12 +61,12 @@ Note: This will try to use browser local storage or [node-persist](https://githu
 ### Send Money
 
 ```
-	wallet.send('1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW', 30, function () {
+	wallet.send('1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW', 30, function (response) {
 		// $30 sent to recipient
 	});
 ```
 
-### Export Wallet (to [WIF](https://en.bitcoin.it/wiki/Wallet_import_format))
+### Export Wallet to WIF
 
 ```
 	wallet.key.toWIF()

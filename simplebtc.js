@@ -85,15 +85,27 @@ setInterval(getGetExchangeRates(true), 3600000);
 
 /*** Wallet ***/
 
-Wallet	= function (wif, localCurrency) {
-	if (wif && wif.length == 3 && !localCurrency) {
-		localCurrency	= wif;
-		wif				= null;
-	}
+Wallet	= function (options) {
+	options	= options || {};
 
-	this.localCurrency	= localCurrency || (wif && wif.localCurrency) || 'BTC';
-	this.key			= !wif ? Bitcoin.ECKey.makeRandom() : wif.toWIF ? wif : wif.key ? wif.key : Bitcoin.ECKey.fromWIF(wif);
-	this.address		= this.key.pub.getAddress().toString();
+	if (typeof options == 'Wallet') {
+		for (var k in {localCurrency: null, key: null, isReadOnly: null, address: null}) {
+			this[k]	= options[k];
+		}
+	}
+	else {
+		this.localCurrency	= options.localCurrency || 'BTC';
+
+		if (options.wif) {
+			this.key		= Bitcoin.ECKey.fromWIF(options.wif);
+		}
+		else if (!options.address) {
+			this.key		= Bitcoin.ECKey.makeRandom();
+		}
+
+		this.isReadOnly		= !this.key;
+		this.address		= this.isReadOnly ? options.address : this.key.pub.getAddress().toString();
+	}
 };
 
 Wallet.prototype.getBalance	= function (callback) {
@@ -145,19 +157,41 @@ Wallet.prototype.getTransactionHistory	= function (callback) {
 			for (i = 0 ; i < transactions.length ; ++i) {
 				var transaction	= transactions[i];
 
+				var senderAddresses		= {};
+				var recipientAddresses	= {};
+
 				transaction.valueInLocal	= transaction.valueIn * exchangeRate;
 				transaction.valueOutLocal	= transaction.valueOut * exchangeRate;
 
-				transaction.wasSentByMe		= false;
+				for (var j = 0 ; j < transaction.vin.length ; ++j) {
+					var vin	= transaction.vin[j];
 
-				for (var j = 0 ; j < transaction.vin ; ++j) {
-					transaction.wasSentByMe			= transaction.wasSentByMe || transaction.vin[j].addr == self.address;
-					transaction.vin[j].valueLocal	= transaction.vin[j].value * exchangeRate;
+					transaction.wasSentByMe	= transaction.wasSentByMe || transaction.vin[j].addr == self.address;
+					vin.valueLocal			= transaction.vin[j].value * exchangeRate;
+
+					senderAddresses[transaction.vin[j].addr]	= true;
 				}
 
-				for (var j = 0 ; j < transaction.vout ; ++j) {
-					transaction.vout[j].valueLocal	= parseFloat(transaction.vout[j].value, 10) * exchangeRate;
+				for (var j = 0 ; j < transaction.vout.length ; ++j) {
+					var vout	= transaction.vout[j];
+
+					vout.valueLocal	= parseFloat(vout.value, 10) * exchangeRate;
+
+					for (var k = 0 ; k < vout.scriptPubKey.addresses.length ; ++k) {
+						var recipientAddress	= vout.scriptPubKey.addresses[k];
+
+						if (!senderAddresses[recipientAddress]) {
+							recipientAddresses[vout.scriptPubKey.addresses[k]]	= true;
+						}
+					}
 				}
+
+				/* Friendly properties */
+				transaction.amount		= transaction.valueOutLocal;
+				transaction.senders		= Object.keys(senderAddresses);
+				transaction.recipients	= Object.keys(recipientAddresses);
+				transaction.time		= new Date(transaction.time * 1000);
+				transaction.wasSentByMe	= false;
 			}
 
 			callback(transactions);
@@ -254,6 +288,11 @@ Wallet.prototype.onReceive	= function (callback) {
 /* TODO: Figure out what to return in the callback based on whatever pushtx returns */
 Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 	var self	= this;
+
+	if (self.isReadOnly) {
+		callback && callback('Read-only wallet');
+		return;
+	}
 
 	self.getBalance(function (balance) {
 		if (amount > balance.local) {
