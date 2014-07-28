@@ -4,6 +4,12 @@ simplebtc
 Simple JavaScript Bitcoin helper library (built on [BitcoinJS](http://bitcoinjs.org/), [Bitcore](http://bitcore.io/), [Blockchain.info](http://blockchain.info/), and [Insight](http://insight.bitpay.com/))
 
 
+### Require (Node.js)
+
+```
+	var Wallet = require('simplebtc').Wallet;
+```
+
 ### Constructor
 
 ```
