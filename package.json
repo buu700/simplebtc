@@ -1,0 +1,30 @@
+{
+  "name": "simplebtc",
+  "version": "0.1.0",
+  "description": "Simple JavaScript Bitcoin helper library (WARNING: not yet fully tested)",
+  "main": "simplebtc.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/buu700/simplebtc.git"
+  },
+  "keywords": [
+    "bitcoin",
+    "btc",
+    "blockchain",
+    "money",
+    "client",
+    "simple"
+  ],
+  "author": "Ryan Lester <hacker@linux.com> (https://github.com/buu700)",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/buu700/simplebtc/issues"
+  },
+  "dependencies": {
+  	"xmlhttprequest": "*",
+  	"node-persist": "*"
+  }
+}
