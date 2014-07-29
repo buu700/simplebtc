@@ -166,10 +166,10 @@ Wallet.prototype.getTransactionHistory	= function (callback) {
 				for (var j = 0 ; j < transaction.vin.length ; ++j) {
 					var vin	= transaction.vin[j];
 
-					transaction.wasSentByMe	= transaction.wasSentByMe || transaction.vin[j].addr == self.address;
-					vin.valueLocal			= transaction.vin[j].value * exchangeRate;
+					transaction.wasSentByMe	= transaction.wasSentByMe || vin.addr == self.address;
+					vin.valueLocal			= vin.value * exchangeRate;
 
-					senderAddresses[transaction.vin[j].addr]	= true;
+					senderAddresses[vin.addr]	= true;
 				}
 
 				for (var j = 0 ; j < transaction.vout.length ; ++j) {
