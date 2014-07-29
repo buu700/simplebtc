@@ -119,13 +119,13 @@ Wallet.prototype.getBalance	= function (callback) {
 
 	request.onreadystatechange	= function () {
 		if (request.readyState == 4 && request.status == 200) {
-			var balance	= parseInt(request.responseText || '0', 10);
+			var balance	= parseInt(request.responseText || '0', 10) / 100000000;
 
 			callback({btc: balance, local: balance * exchangeRates[self.localCurrency]});
 		}
 	};
 
-	request.open('GET', 'https://blockchain.info/q/addressbalance/' + self.address + '?cors=true', true);
+	request.open('GET', 'https://blockchain.info/q/addressbalance/' + self.address + '?&cors=true', true);
 	request.send();
 };
 
@@ -285,18 +285,19 @@ Wallet.prototype.onReceive	= function (callback) {
 	}
 };
 
-/* TODO: Figure out what to return in the callback based on whatever pushtx returns */
 Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 	var self	= this;
 
 	if (self.isReadOnly) {
-		callback && callback('Read-only wallet');
+		callback && callback(false, 'Read-only wallet');
 		return;
 	}
 
 	self.getBalance(function (balance) {
-		if (amount > balance.local) {
-			callback && callback('Insufficient funds');
+		amount	= amount / exchangeRates[self.localCurrency];
+
+		if (amount > balance.btc) {
+			callback && callback(false, 'Insufficient funds');
 			return;
 		}
 
@@ -304,20 +305,47 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 
 		unspentRequest.onreadystatechange	= function () {
 			if (unspentRequest.readyState == 4 && unspentRequest.status == 200) {
-				var bitcoreTransaction	= new bitcore.TransactionBuilder()
-					.setUnspent(JSON.parse(unspentRequest.responseText).unspent_outputs || [])
-					.setOutputs([{
-						address: new bitcore.Address(
-							recipientAddress.address ?
-								recipientAddress.address :
-								recipientAddress.pub ?
-									recipientAddress.pub.getAddress().toString() :
-									recipientAddress
-						),
-						amount: amount / exchangeRates[self.localCurrency]
-					}])
-					.build()
-				;
+				var _Bitcoin	= Bitcoin;
+				var bitcoreTransaction;
+
+				function createBitcoreTransaction () {
+					bitcoreTransaction	= new bitcore.TransactionBuilder()
+						.setUnspent(JSON.parse(unspentRequest.responseText) || [])
+						.setOutputs([{
+							address:
+								recipientAddress.address ?
+									recipientAddress.address :
+									recipientAddress.pub ?
+										recipientAddress.pub.getAddress().toString() :
+										recipientAddress
+							,
+							amount: amount
+						}])
+						.build()
+					;
+				}
+
+				try {
+					createBitcoreTransaction();
+				}
+				catch (e0) {
+					if (e0.message.indexOf('totalNeededAmount') > -1) {
+						try {
+							amount	-= 0.00025;
+							createBitcoreTransaction();
+						}
+						catch (e1) {
+							callback && callback(false, e1.message);
+							return;
+						}
+					}
+					else {
+						throw e0;
+					}
+				}
+				finally {
+					Bitcoin	= _Bitcoin;
+				}
 
 				var transaction		= Bitcoin.Transaction.fromHex(bitcoreTransaction.serialize().toString('hex'));
 				transaction.sign(0, self.key);
@@ -327,14 +355,14 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 				if (callback) {
 					pushtxRequest.onreadystatechange	= function () {
 						if (pushtxRequest.readyState == 4) {
-							callback(pushtxRequest.responseText);
+							callback(pushtxRequest.responseText.toLowerCase().indexOf('submitted') > -1, pushtxRequest.responseText);
 						}
 					};
 				}
 
 				pushtxRequest.open('POST', 'https://blockchain.info/pushtx?cors=true', true);
 				var formData	= new FormData();
-				formData.append('tx', transaction.serializeHex());
+				formData.append('tx', transaction.toHex());
 				pushtxRequest.send(formData);
 			}
 		};

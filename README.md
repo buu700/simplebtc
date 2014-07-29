@@ -61,10 +61,17 @@ Note: This will try to use browser local storage or [node-persist](https://githu
 ### Send Money
 
 ```
-	wallet.send('1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW', 30, function (response) {
-		// $30 sent to recipient
+	wallet.send('1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW', 30, function (wasSuccessful, responseMessage) {
+		/*
+			wasSuccessful == true
+			responseMessage == 'Transaction successful'
+
+			$30 sent to recipient
+		*/
 	});
 ```
+
+If available, this method will deduct the transaction fee in addition to the specified amount; otherwise, the fee will be subtracted from the amount being sent.
 
 ### Export Wallet to WIF
 
