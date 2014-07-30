@@ -125,7 +125,7 @@ Wallet.prototype.getBalance	= function (callback) {
 		}
 	};
 
-	request.open('GET', 'https://blockchain.info/q/addressbalance/' + self.address + '?&cors=true', true);
+	request.open('GET', 'https://blockchain.info/q/addressbalance/' + self.address + '?confirmations=6&cors=true', true);
 	request.send();
 };
 
@@ -243,14 +243,17 @@ Wallet.prototype.onReceive	= function (callback) {
 			try {
 				for (var i = 0 ; i < transactions.length ; ++i) {
 					var transaction	= transactions[i];
-					var txid		= transaction.txid;
 
-					if (!previousTransactions[txid]) {
-						if (!transaction.wasSentByMe) {
-							callback(transaction);
+					if (transaction.isConfirmed) {
+						var txid		= transaction.txid;
+
+						if (!previousTransactions[txid]) {
+							if (!transaction.wasSentByMe) {
+								callback(transaction);
+							}
+
+							previousTransactions[txid]	= true;
 						}
-
-						previousTransactions[txid]	= true;
 					}
 				}
 			}
@@ -272,7 +275,11 @@ Wallet.prototype.onReceive	= function (callback) {
 	else {
 		self.getTransactionHistory(function (initialTransactionHistory) {
 			for (var i = 0 ; i < initialTransactionHistory.length ; ++i) {
-				previousTransactions[initialTransactionHistory[i].txid]	= true;
+				var transaction	= initialTransactionHistory[i];
+
+				if (transaction.isConfirmed) {
+					previousTransactions[transaction.txid]	= true;
+				}
 			}
 
 			persistPreviousTransactions && persistPreviousTransactions();
