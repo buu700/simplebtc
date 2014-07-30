@@ -150,11 +150,7 @@ Wallet.prototype.getTransactionHistory	= function (callback) {
 				transactions	= [];
 			}
 
-			var i;
-			for (i = 0 ; i < transactions.length && transactions[i].confirmations < 6 ; ++i);
-			transactions	= transactions.slice(i);
-
-			for (i = 0 ; i < transactions.length ; ++i) {
+			for (var i = 0 ; i < transactions.length ; ++i) {
 				var transaction	= transactions[i];
 
 				var senderAddresses		= {};
@@ -188,9 +184,10 @@ Wallet.prototype.getTransactionHistory	= function (callback) {
 
 				/* Friendly properties */
 				transaction.amount		= transaction.valueOutLocal;
+				transaction.isConfirmed	= (transaction.confirmations || 0) >= 6;
 				transaction.senders		= Object.keys(senderAddresses);
 				transaction.recipients	= Object.keys(recipientAddresses);
-				transaction.time		= new Date(transaction.time * 1000);
+				transaction.time		= transaction.time ? new Date(transaction.time * 1000) : new Date();
 				transaction.wasSentByMe	= false;
 			}
 

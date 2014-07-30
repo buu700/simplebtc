@@ -40,6 +40,7 @@ If neither a WIF nor an address is specified, a new wallet with a new private ke
 	wallet.getTransactionHistory(function (transactions) {
 		/* transactions == [{
 			amount: 8.0606848794,
+			isConfirmed: true,
 			senders: ['13vexxX79cPv9UheXKHtPU3aefBX1zCv6R'],
 			recipients: ['1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW'],
 			time: Fri Jul 25 2014 21:16:09 GMT-0400 (EDT),
