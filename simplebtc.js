@@ -34,6 +34,41 @@ require=function outer(e,t,n){function i(s,o,u){var a,f=u;if(typeof s==="string"
 var bitcore	= require('bitcore');
 
 
+/*** Local storage ***/
+
+function initJStorage () {
+	var JSON;JSON||(JSON={}),function(){"use strict";function f(e){return 10>e?"0"+e:e}function quote(e){return escapable.lastIndex=0,escapable.test(e)?'"'+e.replace(escapable,function(e){var t=meta[e];return"string"==typeof t?t:"\\u"+("0000"+e.charCodeAt(0).toString(16)).slice(-4)})+'"':'"'+e+'"'}function str(e,t){var r,o,n,a,i,u=gap,s=t[e];switch(s&&"object"==typeof s&&"function"==typeof s.toJSON&&(s=s.toJSON(e)),"function"==typeof rep&&(s=rep.call(t,e,s)),typeof s){case"string":return quote(s);case"number":return isFinite(s)?String(s):"null";case"boolean":case"null":return String(s);case"object":if(!s)return"null";if(gap+=indent,i=[],"[object Array]"===Object.prototype.toString.apply(s)){for(a=s.length,r=0;a>r;r+=1)i[r]=str(r,s)||"null";return n=0===i.length?"[]":gap?"[\n"+gap+i.join(",\n"+gap)+"\n"+u+"]":"["+i.join(",")+"]",gap=u,n}if(rep&&"object"==typeof rep)for(a=rep.length,r=0;a>r;r+=1)"string"==typeof rep[r]&&(o=rep[r],n=str(o,s),n&&i.push(quote(o)+(gap?": ":":")+n));else for(o in s)Object.prototype.hasOwnProperty.call(s,o)&&(n=str(o,s),n&&i.push(quote(o)+(gap?": ":":")+n));return n=0===i.length?"{}":gap?"{\n"+gap+i.join(",\n"+gap)+"\n"+u+"}":"{"+i.join(",")+"}",gap=u,n}}"function"!=typeof Date.prototype.toJSON&&(Date.prototype.toJSON=function(){return isFinite(this.valueOf())?this.getUTCFullYear()+"-"+f(this.getUTCMonth()+1)+"-"+f(this.getUTCDate())+"T"+f(this.getUTCHours())+":"+f(this.getUTCMinutes())+":"+f(this.getUTCSeconds())+"Z":null},String.prototype.toJSON=Number.prototype.toJSON=Boolean.prototype.toJSON=function(){return this.valueOf()});var cx=/[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,escapable=/[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,gap,indent,meta={"\b":"\\b","	":"\\t","\n":"\\n","\f":"\\f","\r":"\\r",'"':'\\"',"\\":"\\\\"},rep;"function"!=typeof JSON.stringify&&(JSON.stringify=function(e,t,r){var o;if(gap="",indent="","number"==typeof r)for(o=0;r>o;o+=1)indent+=" ";else"string"==typeof r&&(indent=r);if(rep=t,t&&"function"!=typeof t&&("object"!=typeof t||"number"!=typeof t.length))throw new Error("JSON.stringify");return str("",{"":e})}),"function"!=typeof JSON.parse&&(JSON.parse=function(text,reviver){function walk(e,t){var r,o,n=e[t];if(n&&"object"==typeof n)for(r in n)Object.prototype.hasOwnProperty.call(n,r)&&(o=walk(n,r),void 0!==o?n[r]=o:delete n[r]);return reviver.call(e,t,n)}var j;if(text=String(text),cx.lastIndex=0,cx.test(text)&&(text=text.replace(cx,function(e){return"\\u"+("0000"+e.charCodeAt(0).toString(16)).slice(-4)})),/^[\],:{}\s]*$/.test(text.replace(/\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4})/g,"@").replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g,"]").replace(/(?:^|:|,)(?:\s*\[)+/g,"")))return j=eval("("+text+")"),"function"==typeof reviver?walk({"":j},""):j;throw new SyntaxError("JSON.parse")})}(),function(){"use strict";function e(){var e=!1;if("localStorage"in window)try{window.localStorage.setItem("_tmptest","tmpval"),e=!0,window.localStorage.removeItem("_tmptest")}catch(t){}if(e)try{window.localStorage&&(b=window.localStorage,O="localStorage",N=b.jStorage_update)}catch(n){}else if("globalStorage"in window)try{window.globalStorage&&(b="localhost"==window.location.hostname?window.globalStorage["localhost.localdomain"]:window.globalStorage[window.location.hostname],O="globalStorage",N=b.jStorage_update)}catch(a){}else{if(m=document.createElement("link"),!m.addBehavior)return void(m=null);m.style.behavior="url(#default#userData)",document.getElementsByTagName("head")[0].appendChild(m);try{m.load("jStorage")}catch(i){m.setAttribute("jStorage","{}"),m.save("jStorage"),m.load("jStorage")}var s="{}";try{s=m.getAttribute("jStorage")}catch(f){}try{N=m.getAttribute("jStorage_update")}catch(l){}b.jStorage=s,O="userDataBehavior"}u(),c(),r(),g(),"addEventListener"in window&&window.addEventListener("pageshow",function(e){e.persisted&&o()},!1)}function t(){var e="{}";if("userDataBehavior"==O){m.load("jStorage");try{e=m.getAttribute("jStorage")}catch(t){}try{N=m.getAttribute("jStorage_update")}catch(r){}b.jStorage=e}u(),c(),g()}function r(){"localStorage"==O||"globalStorage"==O?"addEventListener"in window?window.addEventListener("storage",o,!1):document.attachEvent("onstorage",o):"userDataBehavior"==O&&setInterval(o,1e3)}function o(){var e;clearTimeout(C),C=setTimeout(function(){if("localStorage"==O||"globalStorage"==O)e=b.jStorage_update;else if("userDataBehavior"==O){m.load("jStorage");try{e=m.getAttribute("jStorage_update")}catch(t){}}e&&e!=N&&(N=e,n())},25)}function n(){var e,r=j.parse(j.stringify(y.__jstorage_meta.CRC32));t(),e=j.parse(j.stringify(y.__jstorage_meta.CRC32));var o,n=[],i=[];for(o in r)if(r.hasOwnProperty(o)){if(!e[o]){i.push(o);continue}r[o]!=e[o]&&"2."==String(r[o]).substr(0,2)&&n.push(o)}for(o in e)e.hasOwnProperty(o)&&(r[o]||n.push(o));a(n,"updated"),a(i,"deleted")}function a(e,t){e=[].concat(e||[]);var r,o,n,a;if("flushed"==t){e=[];for(var i in T)T.hasOwnProperty(i)&&e.push(i);t="deleted"}for(r=0,n=e.length;n>r;r++){if(T[e[r]])for(o=0,a=T[e[r]].length;a>o;o++)T[e[r]][o](e[r],t);if(T["*"])for(o=0,a=T["*"].length;a>o;o++)T["*"][o](e[r],t)}}function i(){var e=(+new Date).toString();if("localStorage"==O||"globalStorage"==O)try{b.jStorage_update=e}catch(t){O=!1}else"userDataBehavior"==O&&(m.setAttribute("jStorage_update",e),m.save("jStorage"));o()}function u(){if(b.jStorage)try{y=j.parse(String(b.jStorage))}catch(e){b.jStorage="{}"}else b.jStorage="{}";v=b.jStorage?String(b.jStorage).length:0,y.__jstorage_meta||(y.__jstorage_meta={}),y.__jstorage_meta.CRC32||(y.__jstorage_meta.CRC32={})}function s(){d();try{b.jStorage=j.stringify(y),m&&(m.setAttribute("jStorage",b.jStorage),m.save("jStorage")),v=b.jStorage?String(b.jStorage).length:0}catch(e){}}function f(e){if("string"!=typeof e&&"number"!=typeof e)throw new TypeError("Key name must be string or numeric");if("__jstorage_meta"==e)throw new TypeError("Reserved key name");return!0}function c(){var e,t,r,o,n=1/0,u=!1,f=[];if(clearTimeout(w),y.__jstorage_meta&&"object"==typeof y.__jstorage_meta.TTL){e=+new Date,r=y.__jstorage_meta.TTL,o=y.__jstorage_meta.CRC32;for(t in r)r.hasOwnProperty(t)&&(r[t]<=e?(delete r[t],delete o[t],delete y[t],u=!0,f.push(t)):r[t]<n&&(n=r[t]));1/0!=n&&(w=setTimeout(c,Math.min(n-e,2147483647))),u&&(s(),i(),a(f,"deleted"))}}function g(){var e,t;if(y.__jstorage_meta.PubSub){var r,o=L,n=[];for(e=t=y.__jstorage_meta.PubSub.length-1;e>=0;e--)r=y.__jstorage_meta.PubSub[e],r[0]>L&&(o=r[0],n.unshift(r));for(e=n.length-1;e>=0;e--)l(n[e][1],n[e][2]);L=o}}function l(e,t){if(J[e])for(var r=0,o=J[e].length;o>r;r++)try{J[e][r](e,j.parse(j.stringify(t)))}catch(n){}}function d(){if(y.__jstorage_meta.PubSub){for(var e=+new Date-2e3,t=0,r=y.__jstorage_meta.PubSub.length;r>t;t++)if(y.__jstorage_meta.PubSub[t][0]<=e){y.__jstorage_meta.PubSub.splice(t,y.__jstorage_meta.PubSub.length-t);break}y.__jstorage_meta.PubSub.length||delete y.__jstorage_meta.PubSub}}function p(e,t){y.__jstorage_meta||(y.__jstorage_meta={}),y.__jstorage_meta.PubSub||(y.__jstorage_meta.PubSub=[]),y.__jstorage_meta.PubSub.unshift([+new Date,e,t]),s(),i()}function _(e,t){for(var r,o=e.length,n=t^o,a=0;o>=4;)r=255&e.charCodeAt(a)|(255&e.charCodeAt(++a))<<8|(255&e.charCodeAt(++a))<<16|(255&e.charCodeAt(++a))<<24,r=1540483477*(65535&r)+((1540483477*(r>>>16)&65535)<<16),r^=r>>>24,r=1540483477*(65535&r)+((1540483477*(r>>>16)&65535)<<16),n=1540483477*(65535&n)+((1540483477*(n>>>16)&65535)<<16)^r,o-=4,++a;switch(o){case 3:n^=(255&e.charCodeAt(a+2))<<16;case 2:n^=(255&e.charCodeAt(a+1))<<8;case 1:n^=255&e.charCodeAt(a),n=1540483477*(65535&n)+((1540483477*(n>>>16)&65535)<<16)}return n^=n>>>13,n=1540483477*(65535&n)+((1540483477*(n>>>16)&65535)<<16),n^=n>>>15,n>>>0}var S="0.4.12",h=window.jQuery||window.$||(window.$={}),j={parse:window.JSON&&(window.JSON.parse||window.JSON.decode)||String.prototype.evalJSON&&function(e){return String(e).evalJSON()}||h.parseJSON||h.evalJSON,stringify:Object.toJSON||window.JSON&&(window.JSON.stringify||window.JSON.encode)||h.toJSON};if("function"!=typeof j.parse||"function"!=typeof j.stringify)throw new Error("No JSON support found, include //cdnjs.cloudflare.com/ajax/libs/json2/20110223/json2.js to page");var w,y={__jstorage_meta:{CRC32:{}}},b={jStorage:"{}"},m=null,v=0,O=!1,T={},C=!1,N=0,J={},L=+new Date,x={isXML:function(e){var t=(e?e.ownerDocument||e:0).documentElement;return t?"HTML"!==t.nodeName:!1},encode:function(e){if(!this.isXML(e))return!1;try{return(new XMLSerializer).serializeToString(e)}catch(t){try{return e.xml}catch(r){}}return!1},decode:function(e){var t,r="DOMParser"in window&&(new DOMParser).parseFromString||window.ActiveXObject&&function(e){var t=new ActiveXObject("Microsoft.XMLDOM");return t.async="false",t.loadXML(e),t};return r?(t=r.call("DOMParser"in window&&new DOMParser||window,e,"text/xml"),this.isXML(t)?t:!1):!1}};h.jStorage={version:S,set:function(e,t,r){if(f(e),r=r||{},"undefined"==typeof t)return this.deleteKey(e),t;if(x.isXML(t))t={_is_xml:!0,xml:x.encode(t)};else{if("function"==typeof t)return void 0;t&&"object"==typeof t&&(t=j.parse(j.stringify(t)))}return y[e]=t,y.__jstorage_meta.CRC32[e]="2."+_(j.stringify(t),2538058380),this.setTTL(e,r.TTL||0),a(e,"updated"),t},get:function(e,t){return f(e),e in y?y[e]&&"object"==typeof y[e]&&y[e]._is_xml?x.decode(y[e].xml):y[e]:"undefined"==typeof t?null:t},deleteKey:function(e){return f(e),e in y?(delete y[e],"object"==typeof y.__jstorage_meta.TTL&&e in y.__jstorage_meta.TTL&&delete y.__jstorage_meta.TTL[e],delete y.__jstorage_meta.CRC32[e],s(),i(),a(e,"deleted"),!0):!1},setTTL:function(e,t){var r=+new Date;return f(e),t=Number(t)||0,e in y?(y.__jstorage_meta.TTL||(y.__jstorage_meta.TTL={}),t>0?y.__jstorage_meta.TTL[e]=r+t:delete y.__jstorage_meta.TTL[e],s(),c(),i(),!0):!1},getTTL:function(e){var t,r=+new Date;return f(e),e in y&&y.__jstorage_meta.TTL&&y.__jstorage_meta.TTL[e]?(t=y.__jstorage_meta.TTL[e]-r,t||0):0},flush:function(){return y={__jstorage_meta:{CRC32:{}}},s(),i(),a(null,"flushed"),!0},storageObj:function(){function e(){}return e.prototype=y,new e},index:function(){var e,t=[];for(e in y)y.hasOwnProperty(e)&&"__jstorage_meta"!=e&&t.push(e);return t},storageSize:function(){return v},currentBackend:function(){return O},storageAvailable:function(){return!!O},listenKeyChange:function(e,t){f(e),T[e]||(T[e]=[]),T[e].push(t)},stopListening:function(e,t){if(f(e),T[e]){if(!t)return void delete T[e];for(var r=T[e].length-1;r>=0;r--)T[e][r]==t&&T[e].splice(r,1)}},subscribe:function(e,t){if(e=(e||"").toString(),!e)throw new TypeError("Channel not defined");J[e]||(J[e]=[]),J[e].push(t)},publish:function(e,t){if(e=(e||"").toString(),!e)throw new TypeError("Channel not defined");p(e,t)},reInit:function(){t()},noConflict:function(e){return delete window.$.jStorage,e&&(window.jStorage=this),this}},e()}();
+}
+
+var storage;
+
+try {
+	storage	= require('node-persist');
+}
+catch (e) {}
+
+if (storage) {
+	storage.initSync();
+}
+else {
+	initJStorage();
+	storage	= {};
+
+	var mappings	= {
+		setItem: 'set',
+		getItem: 'get',
+		removeItem: 'deleteKey'
+	};
+
+	for (var k in mappings) {
+		(function () {
+			var f		= window.$.jStorage[mappings[k]];
+			storage[k]	= function () { return f.apply(window.$.jStorage, arguments) };
+		}());
+	}
+}
+
+
 /*** Exchange rates ***/
 
 var exchangeRates;
@@ -125,7 +160,7 @@ Wallet.prototype.getBalance	= function (callback) {
 		}
 	};
 
-	request.open('GET', 'https://blockchain.info/q/addressbalance/' + self.address + '?confirmations=6&cors=true', true);
+	request.open('GET', 'https://blockchain.info/q/addressbalance/' + self.address + '?cors=true', true);
 	request.send();
 };
 
@@ -206,28 +241,11 @@ Wallet.prototype.onReceive	= function (callback) {
 
 	var self	= this;
 
-	var previousTransactions	= {};
 	var previousTransactionsKey	= 'simplebtcPreviousTransactions' + self.address;
-	var persistPreviousTransactions;
-	var nodePersist;
+	var previousTransactions	= storage.getItem(previousTransactionsKey) || {};
 
-	if (localStorage) {
-		if (localStorage[previousTransactionsKey]) {
-			previousTransactions	= JSON.parse(localStorage[previousTransactionsKey]);
-		}
-
-		persistPreviousTransactions	= function () {
-			localStorage[previousTransactionsKey]	= JSON.stringify(previousTransactions);
-		};
-	}
-	else if (require && (nodePersist = require('node-persist'))) {
-		nodePersist.initSync();
-
-		previousTransactions	= nodePersist.getItem(previousTransactionsKey) || previousTransactions;
-
-		persistPreviousTransactions	= function () {
-			nodePersist.setItem(previousTransactionsKey, previousTransactions);
-		};
+	function persistPreviousTransactions () {
+		storage.setItem(previousTransactionsKey, previousTransactions);
 	}
 
 	var processReceiptLock	= false;
@@ -259,7 +277,7 @@ Wallet.prototype.onReceive	= function (callback) {
 			}
 			finally {
 				processReceiptLock	= false;
-				persistPreviousTransactions && persistPreviousTransactions();
+				persistPreviousTransactions();
 			}
 		});
 	}
@@ -282,7 +300,7 @@ Wallet.prototype.onReceive	= function (callback) {
 				}
 			}
 
-			persistPreviousTransactions && persistPreviousTransactions();
+			persistPreviousTransactions();
 
 			setProcessReceiptInterval();
 		});
@@ -312,9 +330,33 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 				var _Bitcoin	= Bitcoin;
 				var bitcoreTransaction;
 
+				var originatingTransactionsKey	= 'simplebtcOriginatingTransactions' + self.address;
+				var originatingTransactions		= storage.getItem(originatingTransactionsKey) || {};
+
+				function persistOriginatingTransactions () {
+					storage.setItem(originatingTransactionsKey, originatingTransactions);
+				}
+
+				var utxo	= JSON.parse(unspentRequest.responseText) || [];
+
+				for (var i = 0 ; i < utxo.length ; ++i) {
+					var txout	= utxo[i];
+
+					if (originatingTransactions[txout.txid]) {
+						if (!txout.confirmations) {
+							txout.confirmations	= 1;
+						}
+						else {
+							delete originatingTransactions[txout.txid];
+						}
+					}
+				}
+
+				persistOriginatingTransactions();
+
 				function createBitcoreTransaction () {
 					bitcoreTransaction	= new bitcore.TransactionBuilder()
-						.setUnspent(JSON.parse(unspentRequest.responseText) || [])
+						.setUnspent(utxo)
 						.setOutputs([{
 							address:
 								recipientAddress.address ?
@@ -330,21 +372,26 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 				}
 
 				try {
-					createBitcoreTransaction();
-				}
-				catch (e0) {
-					if (e0.message.indexOf('totalNeededAmount') > -1) {
+					var count	= 0;
+
+					while (true) {
 						try {
-							amount	-= 0.00025;
 							createBitcoreTransaction();
+							break;
 						}
-						catch (e1) {
-							callback && callback(false, e1.message);
-							return;
+						catch (e) {
+							if (e.message.indexOf('totalNeededAmount') > -1) {
+								amount	-= 0.00005;
+
+								if (++count > 100) {
+									callback && callback(false, e.message);
+									return;
+								}
+							}
+							else {
+								throw e;
+							}
 						}
-					}
-					else {
-						throw e0;
 					}
 				}
 				finally {
@@ -354,12 +401,29 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 				var transaction		= Bitcoin.Transaction.fromHex(bitcoreTransaction.serialize().toString('hex'));
 				transaction.sign(0, self.key);
 
+				var txid	= '';
+				var hash	= transaction.getHash();
+				for (var i = hash.length - 1 ; i >= 0 ; --i) {
+					var str	= hash[i].toString(16);
+					txid	+=
+						str.length == 0 ?
+							'00' :
+							str.length == 1 ?
+								'0' + str : 
+								str.length == 2 ?
+									str :
+									str.substring(str.length-2, str.length)
+					;
+				}
+				originatingTransactions[txid]	= true;
+				persistOriginatingTransactions();
+
 				var pushtxRequest	= new XMLHttpRequest();
 
 				if (callback) {
 					pushtxRequest.onreadystatechange	= function () {
 						if (pushtxRequest.readyState == 4) {
-							callback(pushtxRequest.responseText.toLowerCase().indexOf('submitted') > -1, pushtxRequest.responseText);
+							callback(pushtxRequest.status == 200, pushtxRequest.responseText);
 						}
 					};
 				}

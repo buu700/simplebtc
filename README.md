@@ -65,7 +65,7 @@ Note: This will try to use browser local storage or [node-persist](https://githu
 	wallet.send('1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW', 30, function (wasSuccessful, responseMessage) {
 		/*
 			wasSuccessful == true
-			responseMessage == 'Transaction successful'
+			responseMessage == 'Transaction Submitted'
 
 			$30 sent to recipient
 		*/
