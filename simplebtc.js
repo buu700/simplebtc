@@ -315,10 +315,12 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 		return;
 	}
 
+	var toleranceAmount	= 0.00025;
+
 	self.getBalance(function (balance) {
 		amount	= amount / exchangeRates[self.localCurrency];
 
-		if (amount > balance.btc) {
+		if ((amount - toleranceAmount) > balance.btc) {
 			callback && callback(false, 'Insufficient funds');
 			return;
 		}
@@ -332,26 +334,36 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 
 				var originatingTransactionsKey	= 'simplebtcOriginatingTransactions' + self.address;
 				var originatingTransactions		= storage.getItem(originatingTransactionsKey) || {};
+				var newOriginatingTransactions	= {};
 
 				function persistOriginatingTransactions () {
 					storage.setItem(originatingTransactionsKey, originatingTransactions);
 				}
 
-				var utxo	= JSON.parse(unspentRequest.responseText) || [];
+				var exactBalance	= 0;
+				var utxo			= JSON.parse(unspentRequest.responseText) || [];
 
 				for (var i = 0 ; i < utxo.length ; ++i) {
 					var txout	= utxo[i];
 
 					if (originatingTransactions[txout.txid]) {
 						if (!txout.confirmations) {
+							newOriginatingTransactions[txout.txid]	= true;
 							txout.confirmations	= 1;
+							// txout.ts			= (i + 1 < utxo.length) ? utxo[i + 1].ts + 100 : txout.ts - 3600;
 						}
-						else {
-							delete originatingTransactions[txout.txid];
-						}
+					}
+
+					if (txout.confirmations) {
+						exactBalance	+= txout.amount;
 					}
 				}
 
+				if (toleranceAmount > Math.abs(exactBalance - amount)) {
+					amount	= exactBalance;
+				}
+
+				originatingTransactions	= newOriginatingTransactions;
 				persistOriginatingTransactions();
 
 				function createBitcoreTransaction () {

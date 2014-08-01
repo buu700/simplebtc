@@ -74,6 +74,8 @@ Note: This will try to use browser local storage or [node-persist](https://githu
 
 If available, this method will deduct the transaction fee in addition to the specified amount; otherwise, the fee will be subtracted from the amount being sent.
 
+Similar to Bitcoin-Qt, unspent transaction outputs which originated locally will be treated as confirmed.
+
 ### Export Wallet to WIF
 
 ```
