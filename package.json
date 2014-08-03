@@ -1,6 +1,6 @@
 {
   "name": "simplebtc",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Simple JavaScript Bitcoin helper library",
   "main": "simplebtc.js",
   "scripts": {
