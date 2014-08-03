@@ -242,7 +242,7 @@ Wallet.prototype.getTransactionHistory	= function (callback) {
 	request.send();
 };
 
-Wallet.prototype.onReceive	= function (callback) {
+Wallet.prototype.onReceive	= function (callback, shouldIncludeUnconfirmed) {
 	if (!callback) {
 		return;
 	}
@@ -270,7 +270,7 @@ Wallet.prototype.onReceive	= function (callback) {
 				for (var i = 0 ; i < transactions.length ; ++i) {
 					var transaction	= transactions[i];
 
-					if (transaction.isConfirmed) {
+					if (transaction.isConfirmed || shouldIncludeUnconfirmed) {
 						var txid		= transaction.txid;
 
 						if (!previousTransactions[txid]) {
