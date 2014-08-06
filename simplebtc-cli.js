@@ -43,10 +43,9 @@ function dothemove () {
 		else {
 			options.address	= wallet.address;
 		}
-
-		fs.writeFileSync(simplebtcrcPath, JSON.stringify(options));
 	}
 
+	fs.writeFileSync(simplebtcrcPath, JSON.stringify(options));
 	fs.chmodSync(simplebtcrcPath, 700);
 
 	switch (args[0]) {
