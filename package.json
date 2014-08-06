@@ -1,7 +1,7 @@
 {
   "name": "simplebtc",
-  "version": "0.2.6",
-  "description": "Simple JavaScript Bitcoin helper library",
+  "version": "0.5.0",
+  "description": "High-level Bitcoin library and command line tool, used by [Token](http://token.cx)",
   "main": "simplebtc.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -27,6 +27,11 @@
   	"xmlhttprequest": "*",
     "node-persist": "*",
     "bitcoinjs-lib": "*",
+    "bitcore": "*",
     "form-data": "*"
+  },
+  "preferGlobal": "true",
+  "bin": {
+    "simplebtc" : "simplebtc-cli.js"
   }
 }
