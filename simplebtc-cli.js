@@ -46,7 +46,7 @@ function dothemove () {
 	}
 
 	fs.writeFileSync(simplebtcrcPath, JSON.stringify(options));
-	fs.chmodSync(simplebtcrcPath, 700);
+	fs.chmodSync(simplebtcrcPath, 0700);
 
 	switch (args[0]) {
 		case 'address':
