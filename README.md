@@ -80,7 +80,7 @@ Command line:
 ```
 	wallet.onReceive(function (transaction) {
 
-	}, /* shouldIncludeUnconfirmed */);
+	} /* , shouldIncludeUnconfirmed */);
 ```
 
 Command line:
