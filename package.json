@@ -1,6 +1,6 @@
 {
   "name": "simplebtc",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "High-level Bitcoin library and command line tool, used by [Token](http://token.cx)",
   "main": "simplebtc.js",
   "scripts": {
