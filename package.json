@@ -1,7 +1,7 @@
 {
   "name": "simplebtc",
-  "version": "0.5.1",
-  "description": "High-level Bitcoin library and command line tool, used by [Token](http://token.cx)",
+  "version": "0.5.2",
+  "description": "High-level Bitcoin library and command line tool",
   "main": "simplebtc.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
