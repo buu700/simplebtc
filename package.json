@@ -1,11 +1,11 @@
 {
   "name": "simplebtc",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "High-level Bitcoin library and command line tool",
   "main": "simplebtc.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "test -d /etc/bash_completion.d/ && echo 'complete -W \"address balance history stream send\" simplebtc' > /etc/bash_completion.d/simplebtc"
+    "install": "test -d /etc/bash_completion.d/ && echo 'complete -W \"address balance history stream send\" simplebtc' > /etc/bash_completion.d/simplebtc; exit 0"
   },
   "repository": {
     "type": "git",
@@ -25,7 +25,7 @@
     "url": "https://github.com/buu700/simplebtc/issues"
   },
   "dependencies": {
-  	"xmlhttprequest": "*",
+    "xmlhttprequest": "*",
     "node-persist": "*",
     "bitcoinjs-lib": "*",
     "bitcore": "*",
