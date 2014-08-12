@@ -59,11 +59,12 @@ Command line:
 ```
 	wallet.getTransactionHistory(function (transactions) {
 		/* transactions == [{
-			amount: 8.0606848794,
+			amount: 8.06,
 			isConfirmed: true,
 			senders: ['13vexxX79cPv9UheXKHtPU3aefBX1zCv6R'],
 			recipients: ['1E4G7mwKozrTSUijjB2eFqgbU9zxToZbkz'],
 			time: Fri Jul 25 2014 21:16:09 GMT-0400 (EDT),
+			txid: "4dc88481f79d3937ad6a24e52d7454d47f80b5d099bc0d30dc56e6e820c94438"
 			wasSentByMe: false
 		}, ...] */
 	});

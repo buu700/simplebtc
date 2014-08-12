@@ -45,4 +45,6 @@ git push
 
 npm publish ./
 
+sudo npm -g update
+
 cd "${dir}"

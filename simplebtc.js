@@ -45,6 +45,12 @@ if (storage) {
 	storage.initSync();
 }
 else {
+	var old$;
+
+	if (typeof window.$ != 'undefined') {
+		old$	= window.$.noConflict();
+	}
+
 	/*** jStorage ***/
 
 	storage	= {};
@@ -61,6 +67,8 @@ else {
 			storage[k]	= function () { return f.apply(window.$.jStorage, arguments) };
 		}());
 	}
+
+	window.$	= old$;
 }
 
 
@@ -217,11 +225,12 @@ Wallet.prototype.getTransactionHistory	= function (callback) {
 				}
 
 				/* Friendly properties */
-				// transaction.amount
+				transaction.amount		= parseFloat(transaction.amount.toFixed(2));
 				transaction.isConfirmed	= (transaction.confirmations || 0) >= 6;
 				transaction.senders		= Object.keys(senderAddresses);
 				transaction.recipients	= Object.keys(recipientAddresses);
 				transaction.time		= transaction.time ? new Date(transaction.time * 1000) : new Date();
+				// transaction.txid
 				transaction.wasSentByMe	= false;
 			}
 

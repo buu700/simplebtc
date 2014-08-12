@@ -27,6 +27,7 @@ function formatTransaction (tx) {
 		senders: tx.senders,
 		recipients: tx.recipients,
 		time: tx.time,
+		txid: tx.txid,
 		wasSentByMe: tx.wasSentByMe
 	};
 }
