@@ -188,6 +188,7 @@ Wallet.prototype.getTransactionHistory	= function (callback) {
 
 				transaction.valueInLocal	= transaction.valueIn * exchangeRate;
 				transaction.valueOutLocal	= transaction.valueOut * exchangeRate;
+				transaction.amount			= transaction.valueOutLocal;
 
 				for (var j = 0 ; j < transaction.vin.length ; ++j) {
 					var vin	= transaction.vin[j];
@@ -206,14 +207,17 @@ Wallet.prototype.getTransactionHistory	= function (callback) {
 					for (var k = 0 ; k < vout.scriptPubKey.addresses.length ; ++k) {
 						var recipientAddress	= vout.scriptPubKey.addresses[k];
 
-						if (!senderAddresses[recipientAddress]) {
-							recipientAddresses[vout.scriptPubKey.addresses[k]]	= true;
+						if (senderAddresses[recipientAddress]) {
+							transaction.amount	-= vout.valueLocal;
+						}
+						else {
+							recipientAddresses[recipientAddress]	= true;
 						}
 					}
 				}
 
 				/* Friendly properties */
-				transaction.amount		= transaction.valueOutLocal;
+				// transaction.amount
 				transaction.isConfirmed	= (transaction.confirmations || 0) >= 6;
 				transaction.senders		= Object.keys(senderAddresses);
 				transaction.recipients	= Object.keys(recipientAddresses);
