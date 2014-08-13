@@ -69,6 +69,7 @@ else {
 
 	if (typeof window.$ != 'undefined') {
 		old$	= window.$.noConflict();
+		delete window.$;
 	}
 
 
