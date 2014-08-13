@@ -155,14 +155,14 @@ Wallet	= function (options) {
 		this.localCurrency	= options.localCurrency || 'BTC';
 
 		if (options.wif) {
-			this.key		= Bitcoin.ECKey.fromWIF(options.wif);
+			this.key		= options.wif;
 		}
 		else if (!options.address) {
-			this.key		= Bitcoin.ECKey.makeRandom();
+			this.key		= Bitcoin.ECKey.makeRandom().toWIF();
 		}
 
 		this.isReadOnly		= !this.key;
-		this.address		= this.isReadOnly ? options.address : this.key.pub.getAddress().toString();
+		this.address		= this.isReadOnly ? options.address : Bitcoin.ECKey.fromWIF(this.key).pub.getAddress().toString();
 	}
 };
 
@@ -179,7 +179,7 @@ Wallet.prototype.getBalance	= function (callback) {
 		if (request.readyState == 4 && request.status == 200) {
 			var balance	= parseInt(request.responseText || '0', 10) / 100000000;
 
-			callback({btc: balance, local: balance * exchangeRates[self.localCurrency]});
+			callback({btc: balance, local: parseFloat((balance * exchangeRates[self.localCurrency]).toFixed(2))});
 		}
 	};
 
@@ -352,13 +352,16 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 			callback && callback(false, 'Insufficient funds');
 			return;
 		}
+		else if (balance.btc - amount < 0.0002) {
+			amount	= balance.btc;
+		}
 
 		var unspentRequest	= new XMLHttpRequest();
 
 		unspentRequest.onreadystatechange	= function () {
 			if (unspentRequest.readyState == 4 && unspentRequest.status == 200) {
 				var _Bitcoin	= Bitcoin;
-				var bitcoreTransaction;
+				var transaction;
 
 				var originatingTransactionsKey	= 'simplebtcOriginatingTransactions' + self.address;
 				var originatingTransactions		= storage.getItem(originatingTransactionsKey) || {};
@@ -385,7 +388,7 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 				persistOriginatingTransactions();
 
 				function createBitcoreTransaction () {
-					bitcoreTransaction	= new bitcore.TransactionBuilder()
+					transaction	= new bitcore.TransactionBuilder()
 						.setUnspent(utxo)
 						.setOutputs([{
 							address:
@@ -397,6 +400,7 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 							,
 							amount: amount
 						}])
+						.sign([self.key])
 						.build()
 					;
 				}
@@ -428,33 +432,25 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 					Bitcoin	= _Bitcoin;
 				}
 
-				var transaction		= Bitcoin.Transaction.fromHex(bitcoreTransaction.serialize().toString('hex'));
-				transaction.sign(0, self.key);
-
-				var txid	= '';
-				var hash	= transaction.getHash();
-				for (var i = hash.length - 1 ; i >= 0 ; --i) {
-					var str	= hash[i].toString(16);
-					txid	+=
-						str.length == 0 ?
-							'00' :
-							str.length == 1 ?
-								'0' + str : 
-								str.length == 2 ?
-									str :
-									str.substring(str.length-2, str.length)
-					;
-				}
+				var txid	= transaction.getHash().toString('hex');
 				originatingTransactions[txid]	= true;
 				persistOriginatingTransactions();
 
 				
 				var formData	= new FormData();
-				formData.append('tx', transaction.toHex());
+				formData.append('tx', transaction.serialize().toString('hex'));
 
 				if (formData.submit) {
-					formData.submit(PUSHTX_URL, function (err, res) {
-						callback && callback(res.statusCode == 200, 'TODO: add message body');
+					formData.submit(PUSHTX_URL, callback && function (err, res) {
+						var body	= '';
+
+						res.on('data', function (datum) {
+							body	+= datum;
+						});
+
+						res.on('end', function () {
+							callback(res.statusCode == 200, body);
+						});
 					});
 				}
 				else {
@@ -474,7 +470,7 @@ Wallet.prototype.send	= function (recipientAddress, amount, callback) {
 			}
 		};
 
-		unspentRequest.open('GET', 'http://insight.bitpay.com/api/addr/' + self.address + '/utxo', true);
+		unspentRequest.open('GET', 'http://insight.bitpay.com/api/addr/' + self.address + '/utxo?noCache=1', true);
 		unspentRequest.send();
 	});
 };

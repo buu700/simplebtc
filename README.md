@@ -17,7 +17,7 @@ Simplebtc was built using [BitcoinJS](http://bitcoinjs.org/), [Bitcore](http://b
 ```
 	var wallet = new Wallet(/* {
 		localCurrency: 'USD',
-		wif: 'Kzv6tgLee7NbNhv1Ch4kLqH8BpLHtHVEGnevKpCQ3wMq7drMjg14',
+		wif: 'L4udA8nLC1r2xCVuzretgKuAZkvQq2aCZWKgiGXrxWEcH956xeE2',
 		address: '1E4G7mwKozrTSUijjB2eFqgbU9zxToZbkz'
 	} */);
 ```
@@ -59,13 +59,13 @@ Command line:
 ```
 	wallet.getTransactionHistory(function (transactions) {
 		/* transactions == [{
-			amount: 8.06,
+			amount: 76.92,
 			isConfirmed: true,
-			senders: ['13vexxX79cPv9UheXKHtPU3aefBX1zCv6R'],
-			recipients: ['1E4G7mwKozrTSUijjB2eFqgbU9zxToZbkz'],
-			time: Fri Jul 25 2014 21:16:09 GMT-0400 (EDT),
-			txid: '4dc88481f79d3937ad6a24e52d7454d47f80b5d099bc0d30dc56e6e820c94438'
-			wasSentByMe: false
+			senders: ['1E4G7mwKozrTSUijjB2eFqgbU9zxToZbkz'],
+			recipients: ['1L8wTTMxSUw2vYmQb4xr9r4M1g8n2YFcgX'],
+			time: Wed Aug 13 2014 18:56:12 GMT-0400 (EDT),
+			txid: 'cf046a7e3303a7b44f86e4bb92367b4ae223e2c76dd0b45346de879acd482905',
+			wasSentByMe: true
 		}, ...] */
 	});
 ```
