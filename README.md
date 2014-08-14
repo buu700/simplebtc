@@ -118,7 +118,7 @@ Similar to Bitcoin-Qt, unspent transaction outputs which originated locally will
 ### Export Wallet to WIF
 
 ```
-	wallet.key.toWIF()	// KxMhr6RcBk9N2D8sZTsbjjfpbPonm4BnpTLZn8G4fdEUdoVvdkNC
+	wallet.key	// KxMhr6RcBk9N2D8sZTsbjjfpbPonm4BnpTLZn8G4fdEUdoVvdkNC
 ```
 
 ### Install (Node.js / command line)
