@@ -46,7 +46,6 @@ if (storage) {
 }
 else {
 	var old$;
-
 	if (typeof window.$ != 'undefined') {
 		old$	= window.$.noConflict();
 		delete window.$;
@@ -54,7 +53,10 @@ else {
 
 	/*** jStorage ***/
 
-	storage	= {};
+	var jStorage	= window.$.jStorage;
+	window.$		= old$;
+
+	storage			= {};
 
 	var mappings	= {
 		setItem: 'set',
@@ -64,12 +66,10 @@ else {
 
 	for (var k in mappings) {
 		(function () {
-			var f		= window.$.jStorage[mappings[k]];
-			storage[k]	= function () { return f.apply(window.$.jStorage, arguments) };
+			var f		= jStorage[mappings[k]];
+			storage[k]	= function () { return f.apply(jStorage, arguments) };
 		}());
 	}
-
-	window.$	= old$;
 }
 
 
