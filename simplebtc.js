@@ -45,10 +45,11 @@ if (storage) {
 	storage.initSync();
 }
 else {
-	var old$;
+	var old$	= {$: null, jQuery: null};
 
-	if (typeof window.$ != 'undefined') {
-		old$	= window.$.noConflict();
+	for (var k in old$) {
+		old$[k]	= window[k];
+		delete window[k];
 	}
 
 	window.$		= {};
@@ -56,7 +57,10 @@ else {
 	/*** jStorage ***/
 
 	var jStorage	= window.$.jStorage;
-	window.$		= old$;
+
+	for (var k in old$) {
+		window[k]	= old$[k];
+	}
 
 	storage			= {};
 
