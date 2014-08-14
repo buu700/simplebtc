@@ -46,10 +46,12 @@ if (storage) {
 }
 else {
 	var old$;
+
 	if (typeof window.$ != 'undefined') {
 		old$	= window.$.noConflict();
-		delete window.$;
 	}
+
+	window.$		= {};
 
 	/*** jStorage ***/
 
