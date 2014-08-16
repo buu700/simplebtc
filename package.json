@@ -1,11 +1,11 @@
 {
   "name": "simplebtc",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "description": "High-level Bitcoin library and command line tool",
   "main": "simplebtc.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" ; exit 1",
-    "install": "mkdir -p /etc/bash_completion.d/ ; echo 'complete -W \"address balance history stream send\" simplebtc' > /etc/bash_completion.d/simplebtc ; exit 0"
+    "install": "mkdir -p /etc/bash_completion.d/ > /dev/null 2>&1 ; bash -c \"echo 'complete -W \\\"address balance history stream send\\\" simplebtc' > /etc/bash_completion.d/simplebtc\" > /dev/null 2>&1 ; exit 0"
   },
   "repository": {
     "type": "git",
