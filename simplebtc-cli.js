@@ -39,7 +39,7 @@ function dothemove () {
 		console.log('\nNew wallet created with address ' + wallet.address + '\n');
 
 		if (wallet.key) {
-			options.wif	= wallet.key.toWIF();
+			options.wif	= wallet.key;
 		}
 		else {
 			options.address	= wallet.address;
