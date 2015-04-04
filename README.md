@@ -1,7 +1,7 @@
 simplebtc
 ==============
 
-High-level Bitcoin library and command line tool, used by [Token](http://token.cx)
+High-level Bitcoin library and command line tool, used by [Token](http://ychacks.challengepost.com/submissions/25791-token).
 
 Simplebtc was built using [BitcoinJS](http://bitcoinjs.org/), [Bitcore](http://bitcore.io/), [Blockchain.info](http://blockchain.info/), and [Insight](http://insight.bitpay.com/).
 
