@@ -1,3 +1,10 @@
+**WARNING:** For now, don't use this. It hasn't been maintained in several years, and in that time
+at least one feature has been broken by a change in an external API. A future release is planned in
+which any outstanding issues will be fixed and the code and architecture will be reviewed for
+security and correctness.
+
+---
+
 simplebtc
 ==============
 
