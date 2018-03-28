@@ -14,7 +14,7 @@ var FormData			= require('form-data');
 var map					= require('rxjs/operators/map');
 var ReplaySubject		= require('rxjs/ReplaySubject');
 
-var _fetch		= typeof rootScope.fetch === 'function' ? fetch : isNode ?
+var fetch		= typeof rootScope.fetch === 'function' ? fetch : isNode ?
 	eval('require')('node-fetch') :
 	require('whatwg-fetch')
 ;
