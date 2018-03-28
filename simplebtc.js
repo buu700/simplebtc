@@ -265,18 +265,23 @@ Wallet.prototype.watchNewTransactions	= function (shouldIncludeUnconfirmed) {
 			return;
 		}
 
-		for (var i = 0 ; i < transactions.length ; ++i) {
-			var transaction	= transactions[i].id;
+		var previousTransactionIndex	= previousTransactions.length < 1 ?
+			-1 :
+			transactions.findIndex(function (transaction) {
+				return transaction.id === previousTransactions[0].id;
+			})
+		;
 
-			if (
-				previousTransactions.length > 0 &&
-				previousTransactions[0].id === transaction.id
-			) {
-				break;
-			}
-
-			subject.next(transaction);
-		}
+		(
+			previousTransactionIndex < 0 ?
+				transactions :
+				transactions.slice(0, previousTransactionIndex)
+		).
+			reverse().
+			forEach(function (transaction) {
+				subject.next(transaction);
+			})
+		;
 
 		previousTransactions	= transactions;
 	});
