@@ -47,7 +47,7 @@ function getExchangeRates () {
 	});
 }
 
-function friendlyTransaction (transaction, exchangeRate) {
+function friendlyTransaction (_this, transaction, exchangeRate) {
 	var senderAddresses		= {};
 	var recipientAddresses	= {};
 
@@ -175,7 +175,7 @@ Wallet.prototype.getTransactionHistory	= function () {
 		var txs				= results[0].txs || [];
 		var exchangeRate	= results[1][_this.localCurrency];
 
-		return txs.map(function (tx) { return friendlyTransaction(tx, exchangeRate); });
+		return txs.map(function (tx) { return friendlyTransaction(_this, tx, exchangeRate); });
 	});
 };
 
