@@ -42,7 +42,10 @@ declare module 'simplebtc' {
 		readonly localCurrency: string;
 
 		/** Wallet private key. */
-		readonly key: PrivateKey;
+		readonly key: PrivateKey&{
+			toBuffer: () => Uint8Array;
+			toWIF: () => string;
+		};
 
 		/** Gets balance (in BTC and local currency). */
 		getBalance () : Promise<{btc: number; local: number}>;
