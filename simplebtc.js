@@ -14,12 +14,14 @@ var FormData			= require('form-data');
 var map					= require('rxjs/operators/map');
 var ReplaySubject		= require('rxjs/ReplaySubject');
 
-var fetch		= typeof rootScope.fetch === 'function' ? fetch : isNode ?
+var fetch		= typeof rootScope.fetch === 'function' ? rootScope.fetch : isNode ?
 	eval('require')('node-fetch') :
 	require('whatwg-fetch')
 ;
 
-var WebSocket	= typeof rootScope.WebSocket === 'function' ? WebSocket : eval('require')('ws');
+var WebSocket	= typeof rootScope.WebSocket === 'function' ? rootScope.WebSocket :
+	eval('require')('ws')
+;
 
 /*
 var storage		= typeof rootScope.localStorage === 'object' ? localStorage : (function () {
@@ -163,7 +165,7 @@ Wallet.prototype.getTransactionHistory	= function () {
 
 	return Promise.all([
 		fetch(
-			'http://insight.bitpay.com/api/txs/?address=' + _this.address
+			'https://insight.bitpay.com/api/txs/?address=' + _this.address
 		).then(function (o) {
 			return o.json();
 		}),
@@ -186,7 +188,7 @@ Wallet.prototype.send	= function (recipientAddress, amount) {
 	return Promise.all([
 		_this.getBalance(),
 		fetch(
-			'http://insight.bitpay.com/api/addr/' + _this.address + '/utxo?noCache=1'
+			'https://insight.bitpay.com/api/addr/' + _this.address + '/utxo?noCache=1'
 		).then(function (o) {
 			return o.json();
 		})
