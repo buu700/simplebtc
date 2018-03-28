@@ -26,8 +26,8 @@
 		"url": "https://github.com/buu700/simplebtc/issues"
 	},
 	"dependencies": {
-		"bitcoinjs-lib": "3",
-		"bitcore": "4",
+		"@types/bitcore-lib": "0",
+		"bitcore-lib": "0",
 		"form-data": "*",
 		"node-fetch": "*",
 		"rxjs": "5",

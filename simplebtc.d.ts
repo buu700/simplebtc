@@ -1,3 +1,4 @@
+import {PrivateKey} from 'bitcore-lib';
 import {Observable} from 'rxjs/Observable';
 
 
@@ -37,8 +38,8 @@ declare module 'simplebtc' {
 		/** Local currency code (BTC by default). */
 		readonly localCurrency: string;
 
-		/** Wallet private key in WIF format. */
-		readonly key: string;
+		/** Wallet private key. */
+		readonly key: PrivateKey;
 
 		/** Gets balance (in BTC and local currency). */
 		getBalance () : Promise<{btc: number; local: number}>;
@@ -61,8 +62,8 @@ declare module 'simplebtc' {
 
 		constructor (options?: Wallet|{
 			address?: string;
+			key?: Uint8Array|string;
 			localCurrency?: string;
-			wif?: string;
 		});
 	}
 

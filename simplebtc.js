@@ -8,11 +8,11 @@ var isNode		=
 var rootScope	= isNode ? global : self;
 
 
-var Bitcoin			= require('bitcoinjs-lib');
-var bitcore			= require('bitcore');
-var FormData		= require('form-data');
-var map				= require('rxjs/operators/map');
-var ReplaySubject	= require('rxjs/ReplaySubject');
+var BitcorePrivateKey	= require('bitcore-lib/lib/privatekey');
+var BitcoreTransaction	= require('bitcore-lib/lib/transaction');
+var FormData			= require('form-data');
+var map					= require('rxjs/operators/map');
+var ReplaySubject		= require('rxjs/ReplaySubject');
 
 var _fetch		= typeof rootScope.fetch === 'function' ? fetch : isNode ?
 	eval('require')('node-fetch') :
@@ -111,17 +111,20 @@ var Wallet	= function (options) {
 
 	this.localCurrency	= options.localCurrency || 'BTC';
 
-	if (options.wif) {
-		this.key		= options.wif;
+	if (options.key) {
+		this.key		= typeof options.key === 'string' ?
+			BitcorePrivateKey.fromString(options.key) :
+			BitcorePrivateKey.fromBuffer(options.key)
+		;
 	}
 	else if (!options.address) {
-		this.key		= Bitcoin.ECPair.makeRandom().toWIF();
+		this.key		= new BitcorePrivateKey();
 	}
 
 	this.isReadOnly		= !this.key;
 	this.address		= this.isReadOnly ?
 		options.address :
-		Bitcoin.ECPair.fromWIF(this.key).getAddress().toString()
+		this.key.toAddress().toString()
 	;
 
 	this.originatingTransactions	= {};
@@ -204,20 +207,18 @@ Wallet.prototype.send	= function (recipientAddress, amount) {
 
 		var transaction	= (function createBitcoreTransaction (retries) {
 			try {
-				return new bitcore.TransactionBuilder().
-					setUnspent(utxo).
-					setOutputs([{
-						address:
-							recipientAddress.address ?
-								recipientAddress.address :
-							recipientAddress.getAddress ?
-								recipientAddress.getAddress().toString() :
-								recipientAddress
+				return new BitcoreTransaction().
+					from(utxo).
+					to(
+						recipientAddress.address ?
+							recipientAddress.address :
+						recipientAddress.getAddress ?
+							recipientAddress.getAddress().toString() :
+							recipientAddress
 						,
-						amount: amount
-					}]).
-					sign([_this.key]).
-					build()
+						amount
+					).
+					sign(_this.key)
 				;
 			}
 			catch (e) {
@@ -231,11 +232,11 @@ Wallet.prototype.send	= function (recipientAddress, amount) {
 			}
 		})(0);
 
-		var txid	= transaction.getHash().toString('hex');
+		var txid	= transaction.id;
 		_this.originatingTransactions[txid]	= true;
 		
 		var formData	= new FormData();
-		formData.append('tx', transaction.serialize().toString('hex'));
+		formData.append('tx', transaction.serialize());
 
 		return fetch('https://blockchain.info/pushtx?cors=true', {
 			body: formData,
