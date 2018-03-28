@@ -49,6 +49,7 @@ declare module 'simplebtc' {
 		/**
 		 * Sends money.
 		 * @param amount Amount in local currency.
+		 * @returns Server broadcast method response message.
 		 */
 		send (
 			recipientAddress: string|Wallet|{getAddress: () => {toString: () => string}},

@@ -1,9 +1,11 @@
-var isNode	=
+var isNode		=
 	typeof process === 'object' &&
 	typeof require === 'function' &&
 	typeof window !== 'object' &&
 	typeof importScripts !== 'function'
 ;
+
+var rootScope	= isNode ? global : self;
 
 
 var Bitcoin			= require('bitcoinjs-lib');
@@ -12,15 +14,15 @@ var FormData		= require('form-data');
 var map				= require('rxjs/operators/map');
 var ReplaySubject	= require('rxjs/ReplaySubject');
 
-var fetch		= typeof fetch !== 'undefined' ? fetch : isNode ?
+var _fetch		= typeof rootScope.fetch === 'function' ? fetch : isNode ?
 	eval('require')('node-fetch') :
 	require('whatwg-fetch')
 ;
 
-var WebSocket	= typeof WebSocket !== 'undefined' ? WebSocket : eval('require')('ws');
+var WebSocket	= typeof rootScope.WebSocket === 'function' ? WebSocket : eval('require')('ws');
 
 /*
-var storage		= typeof localStorage !== 'undefined' ? localStorage : (function () {
+var storage		= typeof rootScope.localStorage === 'object' ? localStorage : (function () {
 	var nodePersist	= eval('require')('node-persist');
 	nodePersist.initSync();
 	return nodePersist;
