@@ -299,15 +299,15 @@ Wallet.prototype.watchTransactionHistory	= function (shouldIncludeUnconfirmed) {
 
 			var ws	= new WebSocket('wss://ws.blockchain.info/inv');
 
-			ws.on('open', function () {
+			ws.onopen		= function () {
 				ws.send(JSON.stringify({op: 'addr_sub', addr: _this.address}));
-			});
+			};
 
-			ws.on('message', function () {
+			ws.onmessage	= function () {
 				_this.getTransactionHistory().then(function (wsTransactions) {
 					_this.subjects[_this.address].next(wsTransactions);
 				});
-			});
+			};
 		});
 	}
 
