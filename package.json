@@ -1,38 +1,39 @@
 {
-  "name": "simplebtc",
-  "version": "0.8.7",
-  "description": "High-level Bitcoin library and command line tool",
-  "main": "simplebtc.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" ; exit 1",
-    "install": "mkdir -p /etc/bash_completion.d/ > /dev/null 2>&1 ; bash -c \"echo 'complete -W \\\"address balance history stream send\\\" simplebtc' > /etc/bash_completion.d/simplebtc\" > /dev/null 2>&1 ; exit 0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/buu700/simplebtc.git"
-  },
-  "keywords": [
-    "bitcoin",
-    "btc",
-    "blockchain",
-    "money",
-    "client",
-    "simple"
-  ],
-  "author": "Ryan Lester <hacker@linux.com> (https://github.com/buu700)",
-  "license": "BSD-2-Clause",
-  "bugs": {
-    "url": "https://github.com/buu700/simplebtc/issues"
-  },
-  "dependencies": {
-    "xmlhttprequest": "*",
-    "node-persist": "*",
-    "bitcoinjs-lib": "*",
-    "bitcore": "*",
-    "form-data": "*"
-  },
-  "preferGlobal": "true",
-  "bin": {
-    "simplebtc" : "simplebtc-cli.js"
-  }
+	"name": "simplebtc",
+	"version": "1.0.0",
+	"description": "High-level Bitcoin library and command line tool",
+	"main": "simplebtc.js",
+	"types": "simplebtc.d.ts",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" ; exit 1",
+		"install": "mkdir -p /etc/bash_completion.d/ > /dev/null 2>&1 ; bash -c \"echo 'complete -W \\\"address balance history stream send\\\" simplebtc' > /etc/bash_completion.d/simplebtc\" > /dev/null 2>&1 ; exit 0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/buu700/simplebtc.git"
+	},
+	"keywords": [
+		"bitcoin",
+		"btc",
+		"blockchain",
+		"money",
+		"client",
+		"simple"
+	],
+	"author": "Ryan Lester <hacker@linux.com> (https://github.com/buu700)",
+	"license": "BSD-2-Clause",
+	"bugs": {
+		"url": "https://github.com/buu700/simplebtc/issues"
+	},
+	"dependencies": {
+		"bitcoinjs-lib": "3",
+		"bitcore": "4",
+		"form-data": "*",
+		"node-fetch": "*",
+		"rxjs": "5",
+		"whatwg-fetch": "*"
+	},
+	"bin": {
+		"simplebtc": "simplebtc-cli.js"
+	}
 }
