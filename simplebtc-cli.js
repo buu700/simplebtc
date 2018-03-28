@@ -21,25 +21,19 @@ const options	= {};
 
 
 const formatTransaction	= tx => {
-	return {
-		amount: tx.amount,
-		isConfirmed: tx.isConfirmed,
-		senders: tx.senders,
-		recipients: tx.recipients,
-		time: tx.time,
-		txid: tx.txid,
-		wasSentByMe: tx.wasSentByMe
-	};
+	const o	= {...tx};
+	delete o.baseTransaction;
+	return o;
 };
 
-const dothemove	= () => {
+const dothemove	= async () => {
 	const wallet	= new Wallet(options);
 
 	if (!(options.wif || options.address)) {
 		console.log('\nNew wallet created with address ' + wallet.address + '\n');
 
 		if (wallet.key) {
-			options.wif	= wallet.key;
+			options.wif	= wallet.key.toWIF();
 		}
 		else {
 			options.address	= wallet.address;
@@ -57,23 +51,19 @@ const dothemove	= () => {
 			return;
 
 		case 'balance':
-			wallet.getBalance(balance => {
-				console.log(balance);
-				process.exit();
-			});
+			console.log(await wallet.getBalance());
+			process.exit();
 
 			return;
 
 		case 'history':
-			wallet.getTransactionHistory(transactions => {
-				console.log(transactions.map(formatTransaction));
-				process.exit();
-			});
+			console.log((await wallet.getTransactionHistory()).map(formatTransaction));
+			process.exit();
 
 			return;
 
 		case 'stream':
-			wallet.onReceive(transaction => {
+			wallet.watchNewTransactions().subscribe(transaction => {
 				console.log(formatTransaction(transaction));
 			});
 
@@ -84,14 +74,8 @@ const dothemove	= () => {
 			const amount	= args[2];
 
 			if (recipient && amount) {
-				wallet.send(recipient, amount, (wasSuccessful, responseMessage) => {
-					console.log({
-						wasSuccessful: wasSuccessful,
-						responseMessage: responseMessage
-					});
-
-					process.exit();
-				});
+				console.log(await wallet.send(recipient, amount).catch(err => ({err})));
+				process.exit();
 
 				return;
 			}

@@ -13,6 +13,7 @@ var BitcoreTransaction	= require('bitcore-lib/lib/transaction');
 var FormData			= require('form-data');
 var map					= require('rxjs/operators/map');
 var ReplaySubject		= require('rxjs/ReplaySubject');
+var Subject				= require('rxjs/Subject');
 
 var fetch		= typeof rootScope.fetch === 'function' ? rootScope.fetch : isNode ?
 	eval('require')('node-fetch') :
@@ -252,6 +253,35 @@ Wallet.prototype.send	= function (recipientAddress, amount) {
 			return o.text();
 		});
 	});
+};
+
+Wallet.prototype.watchNewTransactions	= function (shouldIncludeUnconfirmed) {
+	var previousTransactions;
+	var subject	= new Subject();
+
+	this.watchTransactionHistory(shouldIncludeUnconfirmed).subscribe(function (transactions) {
+		if (!previousTransactions) {
+			previousTransactions	= transactions;
+			return;
+		}
+
+		for (var i = 0 ; i < transactions.length ; ++i) {
+			var transaction	= transactions[i].id;
+
+			if (
+				previousTransactions.length > 0 &&
+				previousTransactions[0].id === transaction.id
+			) {
+				break;
+			}
+
+			subject.next(transaction);
+		}
+
+		previousTransactions	= transactions;
+	});
+
+	return subject;
 };
 
 Wallet.prototype.watchTransactionHistory	= function (shouldIncludeUnconfirmed) {

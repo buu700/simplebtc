@@ -47,7 +47,7 @@ declare module 'simplebtc' {
 		/** Gets balance (in BTC and local currency). */
 		getBalance () : Promise<{btc: number; local: number}>;
 
-		/** Gets transaction history. */
+		/** Gets transaction history, sorted by timestamp in descending order. */
 		getTransactionHistory () : Promise<Transaction[]>;
 
 		/**
@@ -59,6 +59,9 @@ declare module 'simplebtc' {
 			recipientAddress: string|Wallet|{getAddress: () => {toString: () => string}},
 			amount: number
 		) : Promise<string>;
+
+		/** Watches for new transactions as they occur. */
+		watchNewTransactions () : Observable<Transaction>;
 
 		/** Watches transaction history. */
 		watchTransactionHistory () : Observable<Transaction[]>;
