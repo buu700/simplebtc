@@ -11,6 +11,9 @@ declare module 'simplebtc' {
 		/** BitPay Insight transaction object. */
 		baseTransaction: any;
 
+		/** Transaction ID. */
+		id: string;
+
 		/** Indicates whether transaction is confirmed. */
 		isConfirmed: boolean;
 

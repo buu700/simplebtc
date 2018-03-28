@@ -86,6 +86,7 @@ function friendlyTransaction (transaction, exchangeRate) {
 	return {
 		amount: parseFloat(transactionData.amount.toFixed(2)),
 		baseTransaction: transaction,
+		id: transaction.txid,
 		isConfirmed: (transaction.confirmations || 0) >= 6,
 		recipients: Object.keys(recipientAddresses),
 		senders: Object.keys(senderAddresses),
