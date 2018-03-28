@@ -115,7 +115,11 @@ var Wallet	= function (options) {
 	if (options.key) {
 		this.key		= typeof options.key === 'string' ?
 			BitcorePrivateKey.fromString(options.key) :
-			BitcorePrivateKey.fromBuffer(options.key)
+			BitcorePrivateKey.fromObject({
+				bn: options.key,
+				compressed: true,
+				network: 'livenet'
+			})
 		;
 	}
 	else if (!options.address) {
