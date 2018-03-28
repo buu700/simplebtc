@@ -93,7 +93,7 @@ function friendlyTransaction (_this, transaction, exchangeRate) {
 		isConfirmed: (transaction.confirmations || 0) >= 6,
 		recipients: Object.keys(recipientAddresses),
 		senders: Object.keys(senderAddresses),
-		timestamp: transaction.time ? transaction.time * 1000 : Date.now(),
+		timestamp: transaction.time * 1000,
 		wasSentByMe: transactionData.wasSentByMe
 	};
 }
