@@ -12,6 +12,7 @@ var BitcorePrivateKey	= require('bitcore-lib/lib/privatekey');
 var BitcoreTransaction	= require('bitcore-lib/lib/transaction');
 var FormData			= require('form-data');
 var {map}				= require('rxjs/operators/map');
+var {mergeMap}			= require('rxjs/operators/mergeMap');
 var {ReplaySubject}		= require('rxjs/ReplaySubject');
 var {Subject}			= require('rxjs/Subject');
 var io					= require('socket.io-client');
@@ -28,6 +29,21 @@ var storage		= typeof rootScope.localStorage === 'object' ? localStorage : (func
 	return nodePersist;
 })();
 */
+
+
+var locks	= {};
+
+function lock (id, f) {
+	if (!locks[id]) {
+		locks[id]	= Promise.resolve();
+	}
+
+	locks[id]	= locks[id].catch(function () {}).then(function () {
+		return f();
+	});
+
+	return locks[id];
+}
 
 
 var Networks	= {
@@ -156,12 +172,48 @@ Wallet.prototype._getExchangeRates	= function () {
 	return this.localCurrency === 'BTC' ? Promise.resolve({BTC: 1}) : getExchangeRates();
 };
 
+Wallet.prototype._friendlyTransactions	= function (transactions) {
+	var _this	= this;
+
+	return Promise.all([
+		transactions,
+		_this._getExchangeRates()
+	]).then(function (results) {
+		var txs				= results[0].txs || [];
+		var exchangeRate	= results[1][_this.localCurrency];
+
+		return txs.map(function (tx) { return friendlyTransaction(_this, tx, exchangeRate); });
+	});
+}
+
+Wallet.prototype._watchTransactions	= function () {
+	var _this	= this;
+
+	var subjectID	= '_watchTransactions ' + _this.address;
+
+	if (!_this.subjects[subjectID]) {
+		_this.subjects[subjectID]	= new Subject();
+
+		var socket	= io(_this.insightBaseURL);
+
+		socket.on('connect', function () {
+			socket.emit('subscribe', 'inv');
+		});
+
+		socket.on(_this.address, function (tx) {
+			_this.subjects[subjectID].next(tx);
+		});
+	}
+
+	return _this.subjects[subjectID];
+};
+
 Wallet.prototype.getBalance	= function () {
 	var _this	= this;
 
 	return Promise.all([
 		fetch(
-			this.insightBaseURL + '/addr/' + _this.address + '/balance'
+			_this.insightBaseURL + '/addr/' + _this.address + '/balance'
 		).then(function (o) {
 			return o.text();
 		}),
@@ -181,19 +233,11 @@ Wallet.prototype.getBalance	= function () {
 Wallet.prototype.getTransactionHistory	= function () {
 	var _this	= this;
 
-	return Promise.all([
-		fetch(
-			this.insightBaseURL + '/txs/?address=' + _this.address
-		).then(function (o) {
-			return o.json();
-		}),
-		_this._getExchangeRates()
-	]).then(function (results) {
-		var txs				= results[0].txs || [];
-		var exchangeRate	= results[1][_this.localCurrency];
-
-		return txs.map(function (tx) { return friendlyTransaction(_this, tx, exchangeRate); });
-	});
+	return _this._friendlyTransactions(fetch(
+		_this.insightBaseURL + '/txs/?address=' + _this.address
+	).then(function (o) {
+		return o.json();
+	}));
 };
 
 Wallet.prototype.send	= function (recipientAddress, amount) {
@@ -206,7 +250,7 @@ Wallet.prototype.send	= function (recipientAddress, amount) {
 	return Promise.all([
 		_this.getBalance(),
 		fetch(
-			this.insightBaseURL + '/addr/' + _this.address + '/utxo?noCache=1'
+			_this.insightBaseURL + '/addr/' + _this.address + '/utxo?noCache=1'
 		).then(function (o) {
 			return o.json();
 		})
@@ -263,7 +307,7 @@ Wallet.prototype.send	= function (recipientAddress, amount) {
 		var formData	= new FormData();
 		formData.append('rawtx', transaction.serialize());
 
-		return fetch(this.insightBaseURL + '/tx/send', {
+		return fetch(_this.insightBaseURL + '/tx/send', {
 			body: formData,
 			method: 'POST'
 		}).then(function (o) {
@@ -273,37 +317,38 @@ Wallet.prototype.send	= function (recipientAddress, amount) {
 };
 
 Wallet.prototype.watchNewTransactions	= function (shouldIncludeUnconfirmed) {
-	var previousTransactions;
-	var subject	= new Subject();
+	if (shouldIncludeUnconfirmed === undefined) {
+		shouldIncludeUnconfirmed	= true;
+	}
 
-	this.watchTransactionHistory(shouldIncludeUnconfirmed).subscribe(function (transactions) {
-		if (!previousTransactions) {
-			previousTransactions	= transactions;
-			return;
-		}
+	var _this	= this;
 
-		var previousTransactionIndex	= previousTransactions.length < 1 ?
-			-1 :
-			transactions.findIndex(function (transaction) {
-				return transaction.id === previousTransactions[0].id;
-			})
-		;
+	var subjectID	= 'watchNewTransactions ' + _this.address;
 
-		(
-			previousTransactionIndex < 0 ?
-				transactions :
-				transactions.slice(0, previousTransactionIndex)
-		).
-			reverse().
-			forEach(function (transaction) {
-				subject.next(transaction);
-			})
-		;
+	if (!_this.subjects[subjectID]) {
+		_this.subjects[subjectID]	= _this._watchTransactions().pipe(mergeMap(function (tx) {
+			return lock(subjectID, function () {
+				return _this._friendlyTransactions(fetch(
+					_this.insightBaseURL + '/tx/' + tx.txid
+				).then(function (o) {
+					return o.json();
+				}).then(function (o) {
+					return [o];
+				})).then(function (newTransaction) {
+					return newTransaction[0];
+				});
+			});
+		}));
+	}
 
-		previousTransactions	= transactions;
-	});
-
-	return subject;
+	return shouldIncludeUnconfirmed ?
+		_this.subjects[subjectID] :
+		_this.subjects[subjectID].pipe(map(function (transactions) {
+			return transactions.filter(function (transaction) {
+				return transaction.isConfirmed;
+			});
+		}))
+	;
 };
 
 Wallet.prototype.watchTransactionHistory	= function (shouldIncludeUnconfirmed) {
@@ -313,29 +358,27 @@ Wallet.prototype.watchTransactionHistory	= function (shouldIncludeUnconfirmed) {
 
 	var _this	= this;
 
-	if (!_this.subjects[_this.address]) {
-		_this.subjects[_this.address]	= new ReplaySubject();
+	var subjectID	= 'watchTransactionHistory ' + _this.address;
+
+	if (!_this.subjects[subjectID]) {
+		_this.subjects[subjectID]	= new ReplaySubject(1);
 
 		_this.getTransactionHistory().then(function (transactions) {
-			_this.subjects[_this.address].next(transactions);
+			_this.subjects[subjectID].next(transactions);
 
-			var socket	= io(this.insightBaseURL);
-
-			socket.on('connect', function () {
-				socket.emit('subscribe', 'inv');
-			});
-
-			socket.on(_this.address, function () {
-				_this.getTransactionHistory().then(function (wsTransactions) {
-					_this.subjects[_this.address].next(wsTransactions);
+			_this._watchTransactions().pipe(mergeMap(function (tx) {
+				return lock(subjectID, function () {
+					return _this.getTransactionHistory();
 				});
-			});
+			})).subscribe(
+				_this.subjects[subjectID]
+			);
 		});
 	}
 
 	return shouldIncludeUnconfirmed ?
-		_this.subjects[_this.address] :
-		_this.subjects[_this.address].pipe(map(function (transactions) {
+		_this.subjects[subjectID] :
+		_this.subjects[subjectID].pipe(map(function (transactions) {
 			return transactions.filter(function (transaction) {
 				return transaction.isConfirmed;
 			});
