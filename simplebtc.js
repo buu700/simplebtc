@@ -14,14 +14,11 @@ var FormData			= require('form-data');
 var {map}				= require('rxjs/operators/map');
 var {ReplaySubject}		= require('rxjs/ReplaySubject');
 var {Subject}			= require('rxjs/Subject');
+var io					= require('socket.io-client');
 
 var fetch		= typeof rootScope.fetch === 'function' ? rootScope.fetch : isNode ?
 	eval('require')('node-fetch') :
 	require('whatwg-fetch')
-;
-
-var WebSocket	= typeof rootScope.WebSocket === 'function' ? rootScope.WebSocket :
-	eval('require')('ws')
 ;
 
 /*
@@ -33,6 +30,11 @@ var storage		= typeof rootScope.localStorage === 'object' ? localStorage : (func
 */
 
 
+var Networks	= {
+	Mainnet: 0,
+	Testnet: 1
+};
+
 function getExchangeRates () {
 	return fetch('https://blockchain.info/ticker?cors=true').then(function (o) {
 		return o.json();
@@ -41,7 +43,7 @@ function getExchangeRates () {
 			o[k]	= o[k].last;
 		}
 
-		o.BTC = 1;
+		o.BTC	= 1;
 
 		return o;
 	});
@@ -104,9 +106,11 @@ var Wallet	= function (options) {
 
 	if (options instanceof Wallet) {
 		this.address					= options.address;
+		this.insightBaseURL				= options.insightBaseURL;
 		this.isReadOnly					= options.isReadOnly;
 		this.localCurrency				= options.localCurrency;
 		this.key						= options.key;
+		this.network					= options.network;
 		this.originatingTransactions	= options.originatingTransactions;
 		this.subjects					= {};
 
@@ -114,19 +118,28 @@ var Wallet	= function (options) {
 	}
 
 	this.localCurrency	= options.localCurrency || 'BTC';
+	this.network		= options.network || Networks.Mainnet;
+
+	this.insightBaseURL	= options.insightBaseURL || (
+		this.network === Networks.Mainnet ?
+			'https://insight.bitpay.com/api' :
+			'https://test-insight.bitpay.com/api'
+	);
+
+	var network			= this.network === Networks.Testnet ? 'testnet' : 'livenet';
 
 	if (options.key) {
 		this.key		= typeof options.key === 'string' ?
-			BitcorePrivateKey.fromString(options.key) :
+			new BitcorePrivateKey(options.key, network) :
 			BitcorePrivateKey.fromObject({
 				bn: options.key,
 				compressed: true,
-				network: 'livenet'
+				network: network
 			})
 		;
 	}
 	else if (!options.address) {
-		this.key		= new BitcorePrivateKey();
+		this.key		= new BitcorePrivateKey(undefined, network);
 	}
 
 	this.isReadOnly		= !this.key;
@@ -139,16 +152,20 @@ var Wallet	= function (options) {
 	this.subjects					= {};
 };
 
+Wallet.prototype._getExchangeRates	= function () {
+	return this.localCurrency === 'BTC' ? Promise.resolve({BTC: 1}) : getExchangeRates();
+};
+
 Wallet.prototype.getBalance	= function () {
 	var _this	= this;
 
 	return Promise.all([
 		fetch(
-			'https://blockchain.info/q/addressbalance/' + _this.address + '?cors=true'
+			this.insightBaseURL + '/addr/' + _this.address + '/balance'
 		).then(function (o) {
 			return o.text();
 		}),
-		getExchangeRates()
+		_this._getExchangeRates()
 	]).then(function (results) {
 		var balance			= Number.parseInt(results[0] || '0', 10) / 100000000;
 		var exchangeRates	= results[1];
@@ -166,11 +183,11 @@ Wallet.prototype.getTransactionHistory	= function () {
 
 	return Promise.all([
 		fetch(
-			'https://insight.bitpay.com/api/txs/?address=' + _this.address
+			this.insightBaseURL + '/txs/?address=' + _this.address
 		).then(function (o) {
 			return o.json();
 		}),
-		getExchangeRates()
+		_this._getExchangeRates()
 	]).then(function (results) {
 		var txs				= results[0].txs || [];
 		var exchangeRate	= results[1][_this.localCurrency];
@@ -189,7 +206,7 @@ Wallet.prototype.send	= function (recipientAddress, amount) {
 	return Promise.all([
 		_this.getBalance(),
 		fetch(
-			'https://insight.bitpay.com/api/addr/' + _this.address + '/utxo?noCache=1'
+			this.insightBaseURL + '/addr/' + _this.address + '/utxo?noCache=1'
 		).then(function (o) {
 			return o.json();
 		})
@@ -244,9 +261,9 @@ Wallet.prototype.send	= function (recipientAddress, amount) {
 		_this.originatingTransactions[txid]	= true;
 		
 		var formData	= new FormData();
-		formData.append('tx', transaction.serialize());
+		formData.append('rawtx', transaction.serialize());
 
-		return fetch('https://blockchain.info/pushtx?cors=true', {
+		return fetch(this.insightBaseURL + '/tx/send', {
 			body: formData,
 			method: 'POST'
 		}).then(function (o) {
@@ -302,17 +319,17 @@ Wallet.prototype.watchTransactionHistory	= function (shouldIncludeUnconfirmed) {
 		_this.getTransactionHistory().then(function (transactions) {
 			_this.subjects[_this.address].next(transactions);
 
-			var ws	= new WebSocket('wss://ws.blockchain.info/inv');
+			var socket	= io(this.insightBaseURL);
 
-			ws.onopen		= function () {
-				ws.send(JSON.stringify({op: 'addr_sub', addr: _this.address}));
-			};
+			socket.on('connect', function () {
+				socket.emit('subscribe', 'inv');
+			});
 
-			ws.onmessage	= function () {
+			socket.on(_this.address, function () {
 				_this.getTransactionHistory().then(function (wsTransactions) {
 					_this.subjects[_this.address].next(wsTransactions);
 				});
-			};
+			});
 		});
 	}
 
@@ -329,6 +346,7 @@ Wallet.prototype.watchTransactionHistory	= function (shouldIncludeUnconfirmed) {
 
 var simplebtc	= {
 	getExchangeRates: getExchangeRates,
+	Networks: Networks,
 	Wallet: Wallet
 };
 

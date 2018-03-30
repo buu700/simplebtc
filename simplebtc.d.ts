@@ -3,6 +3,12 @@ import {Observable} from 'rxjs/Observable';
 
 
 declare module 'simplebtc' {
+	/** Available networks. */
+	enum Networks {
+		Mainnet,
+		Testnet
+	}
+
 	/** A Bitcoin transaction record. */
 	interface Transaction {
 		/** Transaction amount (in local currency). */
@@ -35,6 +41,12 @@ declare module 'simplebtc' {
 		/** Wallet address. */
 		readonly address: string;
 
+		/**
+		 * Base URL of Insight blockchain explorer API.
+		 * Defaults to "https://insight.bitpay.com/api".
+		 */
+		readonly insightBaseURL: string;
+
 		/** Indicates whether wallet is read-only (i.e. private key is unknown). */
 		readonly isReadOnly: boolean;
 
@@ -46,6 +58,9 @@ declare module 'simplebtc' {
 			toBuffer: () => Uint8Array;
 			toWIF: () => string;
 		};
+
+		/** @see Networks */
+		readonly network: Networks;
 
 		/** Gets balance (in BTC and local currency). */
 		getBalance () : Promise<{btc: number; local: number}>;
@@ -71,8 +86,10 @@ declare module 'simplebtc' {
 
 		constructor (options?: Wallet|{
 			address?: string;
+			insightBaseURL?: string;
 			key?: Uint8Array|string;
 			localCurrency?: string;
+			network?: Networks;
 		});
 	}
 
