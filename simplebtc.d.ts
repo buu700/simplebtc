@@ -1,5 +1,5 @@
 import {PrivateKey} from 'bitcore-lib';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 
 
 declare module 'simplebtc' {

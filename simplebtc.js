@@ -8,14 +8,12 @@ var isNode		=
 var rootScope	= isNode ? global : self;
 
 
-var BitcorePrivateKey	= require('bitcore-lib/lib/privatekey');
-var BitcoreTransaction	= require('bitcore-lib/lib/transaction');
-var FormData			= require('form-data');
-var {map}				= require('rxjs/operators/map');
-var {mergeMap}			= require('rxjs/operators/mergeMap');
-var {ReplaySubject}		= require('rxjs/ReplaySubject');
-var {Subject}			= require('rxjs/Subject');
-var io					= require('socket.io-client');
+var BitcorePrivateKey			= require('bitcore-lib/lib/privatekey');
+var BitcoreTransaction			= require('bitcore-lib/lib/transaction');
+var FormData					= require('form-data');
+var {ReplaySubject, Subject}	= require('rxjs');
+var {map, mergeMap}				= require('rxjs/operators');
+var io							= require('socket.io-client');
 
 var fetch		= typeof rootScope.fetch === 'function' ? rootScope.fetch : isNode ?
 	eval('require')('node-fetch') :
