@@ -349,11 +349,6 @@ Wallet.prototype.send = function (recipientAddress, amount) {
 			}
 		})(0);
 
-		console.warn({
-			transaction,
-			utxos
-		});
-
 		var txid = transaction.id;
 		_this.originatingTransactions[txid] = true;
 
@@ -366,11 +361,6 @@ Wallet.prototype.send = function (recipientAddress, amount) {
 		})
 			.then(function (o) {
 				return o.text();
-			})
-			.then(o => {
-				console.warn(o);
-				debugger;
-				return o;
 			});
 	});
 };
