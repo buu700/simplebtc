@@ -53,9 +53,6 @@ declare module 'simplebtc' {
 			toWIF: () => string;
 		};
 
-		/** @see Networks */
-		readonly network: Networks;
-
 		/** Gets balance (in BTC and local currency). */
 		getBalance () : Promise<{btc: number; local: number}>;
 
