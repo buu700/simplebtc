@@ -3,12 +3,6 @@ import {Observable} from 'rxjs';
 
 
 declare module 'simplebtc' {
-	/** Available networks. */
-	enum Networks {
-		Mainnet,
-		Testnet
-	}
-
 	/** A Bitcoin transaction record. */
 	interface Transaction {
 		/** Transaction amount (in local currency). */
@@ -89,9 +83,11 @@ declare module 'simplebtc' {
 			insightBaseURL?: string;
 			key?: Uint8Array|string;
 			localCurrency?: string;
-			network?: Networks;
 		});
 	}
+
+	/** Static fee for all transactions. */
+	const transactionFee: number;
 
 	/** Returns exchange rates between various currencies and Bitcoin. */
 	const getExchangeRates: () => Promise<{[currencyCode: string]: number}>;
