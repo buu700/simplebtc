@@ -504,6 +504,7 @@ Wallet.prototype.watchTransactionHistory = function (
 
 var simplebtc = {
 	getExchangeRates: getExchangeRates,
+	minimumTransactionAmount: BitcoreTransaction.DUST_AMOUNT / satoshiConversion,
 	transactionFee: transactionFee / satoshiConversion,
 	Wallet: Wallet
 };

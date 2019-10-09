@@ -83,6 +83,9 @@ declare module 'simplebtc' {
 		});
 	}
 
+	/** Minimum ("dust") transaction amount. */
+	const minimumTransactionAmount: number;
+
 	/** Static fee for all transactions. */
 	const transactionFee: number;
 
