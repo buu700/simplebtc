@@ -43,6 +43,25 @@ function lock (id, f) {
 	return locks[id];
 }
 
+function request (url, opts) {
+	var retries = 0;
+
+	return lock('request', function () {
+		return fetch(url, opts);
+	}).catch(function (err) {
+		if (retries > 10) {
+			throw err;
+		}
+		++retries;
+
+		return new Promise(function (resolve) {
+			setTimeout(resolve, 250);
+		}).then(function () {
+			return request(url, opts);
+		});
+	});
+}
+
 var satoshiConversion = 100000000;
 var transactionFee = 5430;
 
@@ -64,9 +83,7 @@ function blockchainAPI (url, params) {
 }
 
 function blockchainAPIRequest (url, params) {
-	return lock('blockchainAPIRequest', function () {
-		return fetch(blockchainAPI(url, params));
-	}).then(function (o) {
+	return request(blockchainAPI(url, params)).then(function (o) {
 		return o.json();
 	});
 }
@@ -253,8 +270,7 @@ Wallet.prototype.getBalance = function () {
 		try {
 			balance =
 				results[0][_this.address].final_balance / satoshiConversion;
-		}
-		catch (_) {}
+		} catch (_) {}
 
 		var exchangeRates = results[1];
 
@@ -355,13 +371,12 @@ Wallet.prototype.send = function (recipientAddress, amount) {
 		var formData = new FormData();
 		formData.append('tx', transaction.serialize());
 
-		return fetch(blockchainAPI('pushtx'), {
+		return request(blockchainAPI('pushtx'), {
 			body: formData,
 			method: 'POST'
-		})
-			.then(function (o) {
-				return o.text();
-			});
+		}).then(function (o) {
+			return o.text();
+		});
 	});
 };
 
