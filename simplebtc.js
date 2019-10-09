@@ -170,7 +170,7 @@ function friendlyTransaction (_this, transaction, exchangeRate) {
 
 	return {
 		amount: parseFloat(
-			(transactionData.amount / satoshiConversion).toFixed(6)
+			(transactionData.amount / satoshiConversion).toFixed(8)
 		),
 		baseTransaction: transaction,
 		id: transaction.txid,
