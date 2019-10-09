@@ -1,6 +1,6 @@
 {
 	"name": "simplebtc",
-	"version": "2.0.2",
+	"version": "2.0.3",
 	"description": "High-level Bitcoin library and command line tool",
 	"main": "simplebtc.js",
 	"types": "simplebtc.d.ts",
@@ -31,7 +31,6 @@
 		"form-data": "*",
 		"node-fetch": "*",
 		"rxjs": "^6",
-		"socket.io-client": "*",
 		"whatwg-fetch": "*"
 	},
 	"bin": {
