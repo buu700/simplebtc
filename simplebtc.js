@@ -48,18 +48,28 @@ function request (url, opts) {
 
 	return lock('request', function () {
 		return fetch(url, opts);
-	}).catch(function (err) {
-		if (retries > 10) {
-			throw err;
-		}
-		++retries;
+	})
+		.then(function (o) {
+			if (o.status !== 200) {
+				throw new Error(
+					'Request failure: status ' + o.status.toString()
+				);
+			}
 
-		return new Promise(function (resolve) {
-			setTimeout(resolve, 250);
-		}).then(function () {
-			return request(url, opts);
+			return o;
+		})
+		.catch(function (err) {
+			if (retries > 10) {
+				throw err;
+			}
+			++retries;
+
+			return new Promise(function (resolve) {
+				setTimeout(resolve, 250);
+			}).then(function () {
+				return request(url, opts);
+			});
 		});
-	});
 }
 
 var satoshiConversion = 100000000;
@@ -70,7 +80,10 @@ var blockchainWebSocketURL = 'wss://ws.blockchain.info/inv';
 
 function blockchainAPI (url, params) {
 	params = params || {};
-	params.cors = true;
+
+	if (params.cors !== false) {
+		params.cors = true;
+	}
 
 	return (
 		blockchainApiURL +
@@ -157,7 +170,7 @@ function friendlyTransaction (_this, transaction, exchangeRate) {
 
 	return {
 		amount: parseFloat(
-			(transactionData.amount / satoshiConversion).toFixed(4)
+			(transactionData.amount / satoshiConversion).toFixed(6)
 		),
 		baseTransaction: transaction,
 		id: transaction.txid,
@@ -259,40 +272,21 @@ Wallet.prototype._watchTransactions = function () {
 	return _this.subjects[subjectID];
 };
 
-Wallet.prototype.getBalance = function () {
+/*
+Wallet.prototype.calculateTransactionFee = function (
+	amount
+) {
 	var _this = this;
 
-	return Promise.all([
-		blockchainAPIRequest('balance', {active: _this.address}),
-		_this._getExchangeRates()
-	]).then(function (results) {
-		var balance = 0;
-		try {
-			balance =
-				results[0][_this.address].final_balance / satoshiConversion;
-		} catch (_) {}
-
-		var exchangeRates = results[1];
-
-		return {
-			_exchangeRates: exchangeRates,
-			btc: balance,
-			local: parseFloat(
-				(balance * (exchangeRates[_this.localCurrency] || 0)).toFixed(2)
-			)
-		};
-	});
+	return _this
+		.createTransaction('1Cyph47AKhyG8mP9SPxd2ELTB2iGyJjfnd', amount)
+		.then(function (transaction) {
+			return transaction.getFee() / satoshiConversion;
+		});
 };
+*/
 
-Wallet.prototype.getTransactionHistory = function () {
-	var _this = this;
-
-	return _this._friendlyTransactions(
-		blockchainAPIRequest('rawaddr/' + _this.address)
-	);
-};
-
-Wallet.prototype.send = function (recipientAddress, amount) {
+Wallet.prototype.createTransaction = function (recipientAddress, amount) {
 	var _this = this;
 
 	if (_this.isReadOnly) {
@@ -301,7 +295,11 @@ Wallet.prototype.send = function (recipientAddress, amount) {
 
 	return Promise.all([
 		_this.getBalance(),
-		blockchainAPIRequest('unspent', {active: _this.address})
+		blockchainAPIRequest('unspent', {active: _this.address}).catch(
+			function () {
+				return {unspent_outputs: []};
+			}
+		)
 	]).then(function (results) {
 		var balance = results[0];
 
@@ -332,7 +330,7 @@ Wallet.prototype.send = function (recipientAddress, amount) {
 			}
 		}
 
-		var transaction = (function createBitcoreTransaction (retries) {
+		return (function createBitcoreTransaction (retries) {
 			try {
 				return new BitcoreTransaction()
 					.from(
@@ -348,6 +346,7 @@ Wallet.prototype.send = function (recipientAddress, amount) {
 							recipientAddress,
 						Math.floor(amount * satoshiConversion)
 					)
+					.change(_this.address)
 					.fee(transactionFee)
 					.sign(_this.key);
 			}
@@ -364,20 +363,62 @@ Wallet.prototype.send = function (recipientAddress, amount) {
 				}
 			}
 		})(0);
-
-		var txid = transaction.id;
-		_this.originatingTransactions[txid] = true;
-
-		var formData = new FormData();
-		formData.append('tx', transaction.serialize());
-
-		return request(blockchainAPI('pushtx'), {
-			body: formData,
-			method: 'POST'
-		}).then(function (o) {
-			return o.text();
-		});
 	});
+};
+
+Wallet.prototype.getBalance = function () {
+	var _this = this;
+
+	return Promise.all([
+		blockchainAPIRequest('balance', {active: _this.address}),
+		_this._getExchangeRates()
+	]).then(function (results) {
+		var balance = 0;
+		try {
+			balance =
+				results[0][_this.address].final_balance / satoshiConversion;
+		}
+		catch (_) {}
+
+		var exchangeRates = results[1];
+
+		return {
+			_exchangeRates: exchangeRates,
+			btc: balance,
+			local: parseFloat(
+				(balance * (exchangeRates[_this.localCurrency] || 0)).toFixed(2)
+			)
+		};
+	});
+};
+
+Wallet.prototype.getTransactionHistory = function () {
+	var _this = this;
+
+	return _this._friendlyTransactions(
+		blockchainAPIRequest('rawaddr/' + _this.address)
+	);
+};
+
+Wallet.prototype.send = function (recipientAddress, amount) {
+	var _this = this;
+
+	return _this
+		.createTransaction(recipientAddress, amount)
+		.then(function (transaction) {
+			var txid = transaction.id;
+			_this.originatingTransactions[txid] = true;
+
+			var formData = new FormData();
+			formData.append('tx', transaction.serialize());
+
+			return request(blockchainAPI('pushtx'), {
+				body: formData,
+				method: 'POST'
+			}).then(function (o) {
+				return o.text();
+			});
+		});
 };
 
 Wallet.prototype.watchNewTransactions = function (shouldIncludeUnconfirmed) {
