@@ -1,18 +1,18 @@
-var isNode =
+const isNode =
 	typeof process === 'object' &&
 	typeof require === 'function' &&
 	typeof window !== 'object' &&
 	typeof importScripts !== 'function';
 
-var rootScope = isNode ? global : self;
+const rootScope = isNode ? global : self;
 
-var BitcorePrivateKey = require('bitcore-lib/lib/privatekey');
-var BitcoreTransaction = require('bitcore-lib/lib/transaction');
-var FormData = require('form-data');
-var {ReplaySubject, Subject} = require('rxjs');
-var {map, mergeMap} = require('rxjs/operators');
+const BitcorePrivateKey = require('bitcore-lib/lib/privatekey');
+const BitcoreTransaction = require('bitcore-lib/lib/transaction');
+const FormData = require('form-data');
+const {ReplaySubject, Subject} = require('rxjs');
+const {map, mergeMap} = require('rxjs/operators');
 
-var fetch =
+const fetch =
 	typeof rootScope.fetch === 'function' ?
 		rootScope.fetch :
 	isNode ?
@@ -27,7 +27,7 @@ var storage		= typeof rootScope.localStorage === 'object' ? localStorage : (func
 })();
 */
 
-var locks = {};
+const locks = {};
 
 function lock (id, f)  {
 	if (!locks[id]) {
@@ -44,7 +44,7 @@ function lock (id, f)  {
 }
 
 function request (url, opts)  {
-	var retries = 0;
+	let retries = 0;
 
 	return lock('request', function ()  {
 		return fetch(url, opts);
@@ -72,11 +72,11 @@ function request (url, opts)  {
 		});
 }
 
-var satoshiConversion = 100000000;
-var transactionFee = 5430;
+const satoshiConversion = 100000000;
+const transactionFee = 5430;
 
-var blockchainApiURL = 'https://blockchain.info/';
-var blockchainWebSocketURL = 'wss://ws.blockchain.info/inv';
+const blockchainApiURL = 'https://blockchain.info/';
+const blockchainWebSocketURL = 'wss://ws.blockchain.info/inv';
 
 function blockchainAPI (url, params)  {
 	params = params || {};
@@ -103,7 +103,7 @@ function blockchainAPIRequest (url, params)  {
 
 function getExchangeRates ()  {
 	return blockchainAPIRequest('ticker').then(function (o)  {
-		for (var k in o) {
+		for (const k in o) {
 			o[k] = o[k].last;
 		}
 
@@ -114,10 +114,10 @@ function getExchangeRates ()  {
 }
 
 function friendlyTransaction (_this, transaction, exchangeRate)  {
-	var senderAddresses = {};
-	var recipientAddresses = {};
+	const senderAddresses = {};
+	const recipientAddresses = {};
 
-	var valueIn = transaction.inputs
+	const valueIn = transaction.inputs
 		.map(function (o)  {
 			return o.prev_out.value;
 		})
@@ -125,7 +125,7 @@ function friendlyTransaction (_this, transaction, exchangeRate)  {
 			return a + b;
 		});
 
-	var valueOut = transaction.out
+	const valueOut = transaction.out
 		.map(function (o)  {
 			return o.value;
 		})
@@ -133,7 +133,7 @@ function friendlyTransaction (_this, transaction, exchangeRate)  {
 			return a + b;
 		});
 
-	var transactionData = {
+	const transactionData = {
 		amount: undefined,
 		valueInLocal: valueIn * exchangeRate,
 		valueOutLocal: valueOut * exchangeRate,
@@ -142,8 +142,8 @@ function friendlyTransaction (_this, transaction, exchangeRate)  {
 
 	transactionData.amount = transactionData.valueOutLocal;
 
-	for (var j = 0; j < transaction.inputs.length; ++j) {
-		var vin = transaction.inputs[j].prev_out;
+	for (let i = 0; i < transaction.inputs.length; ++i) {
+		const vin = transaction.inputs[i].prev_out;
 
 		transactionData.wasSentByMe =
 			transactionData.wasSentByMe || vin.addr === _this.address;
@@ -153,8 +153,8 @@ function friendlyTransaction (_this, transaction, exchangeRate)  {
 		senderAddresses[vin.addr] = true;
 	}
 
-	for (var j = 0; j < transaction.out.length; ++j) {
-		var vout = transaction.out[j];
+	for (let i = 0; i < transaction.out.length; ++i) {
+		const vout = transaction.out[i];
 
 		vout.valueLocal = vout.value * exchangeRate;
 
@@ -182,7 +182,7 @@ function friendlyTransaction (_this, transaction, exchangeRate)  {
 	};
 }
 
-var Wallet = function (options)  {
+const Wallet = function (options)  {
 	options = options || {};
 
 	if (options instanceof Wallet) {
@@ -228,12 +228,12 @@ Wallet.prototype._getExchangeRates = function ()  {
 };
 
 Wallet.prototype._friendlyTransactions = function (transactions)  {
-	var _this = this;
+	const _this = this;
 
 	return Promise.all([transactions, _this._getExchangeRates()]).then(
 		function (results)  {
-			var txs = results[0].txs || [];
-			var exchangeRate = results[1][_this.localCurrency];
+			const txs = results[0].txs || [];
+			const exchangeRate = results[1][_this.localCurrency];
 
 			return txs.map(function (tx)  {
 				return friendlyTransaction(_this, tx, exchangeRate);
@@ -243,21 +243,21 @@ Wallet.prototype._friendlyTransactions = function (transactions)  {
 };
 
 Wallet.prototype._watchTransactions = function ()  {
-	var _this = this;
+	const _this = this;
 
-	var subjectID = '_watchTransactions ' + _this.address;
+	const subjectID = '_watchTransactions ' + _this.address;
 
 	if (!_this.subjects[subjectID]) {
 		_this.subjects[subjectID] = new Subject();
 
-		var socket = new WebSocket(blockchainWebSocketURL);
+		const socket = new WebSocket(blockchainWebSocketURL);
 
 		socket.onopen = function ()  {
 			socket.send(JSON.stringify({op: 'addr_sub', addr: _this.address}));
 		};
 
 		socket.onmessage = function (msg)  {
-			var txid;
+			let txid;
 			try {
 				txid = JSON.parse(msg.data).x.hash;
 			}
@@ -287,7 +287,7 @@ Wallet.prototype.calculateTransactionFee = function (
 */
 
 Wallet.prototype.createTransaction = function (recipientAddress, amount)  {
-	var _this = this;
+	const _this = this;
 
 	if (_this.isReadOnly) {
 		return Promise.reject(new Error('Read-only wallet'));
@@ -301,9 +301,9 @@ Wallet.prototype.createTransaction = function (recipientAddress, amount)  {
 			}
 		)
 	]).then(function (results)  {
-		var balance = results[0];
+		const balance = results[0];
 
-		var utxos = ((results[1] || {}).unspent_outputs || []).map(function (
+		const utxos = ((results[1] || {}).unspent_outputs || []).map(function (
 			o
 		)  {
 			return {
@@ -320,8 +320,8 @@ Wallet.prototype.createTransaction = function (recipientAddress, amount)  {
 			throw new Error('Insufficient funds');
 		}
 
-		for (var i = 0; i < utxos.length; ++i) {
-			var utxo = utxos[i];
+		for (let i = 0; i < utxos.length; ++i) {
+			const utxo = utxos[i];
 			if (
 				_this.originatingTransactions[utxo.txid] &&
 				!utxo.confirmations
@@ -365,19 +365,19 @@ Wallet.prototype.createTransaction = function (recipientAddress, amount)  {
 };
 
 Wallet.prototype.getBalance = function ()  {
-	var _this = this;
+	const _this = this;
 
 	return Promise.all([
 		blockchainAPIRequest('balance', {active: _this.address}),
 		_this._getExchangeRates()
 	]).then(function (results)  {
-		var balance = 0;
+		let balance = 0;
 		try {
 			balance =
 				results[0][_this.address].final_balance / satoshiConversion;
 		}  catch (_) {}
 
-		var exchangeRates = results[1];
+		const exchangeRates = results[1];
 
 		return {
 			_exchangeRates: exchangeRates,
@@ -390,7 +390,7 @@ Wallet.prototype.getBalance = function ()  {
 };
 
 Wallet.prototype.getTransactionHistory = function ()  {
-	var _this = this;
+	const _this = this;
 
 	return _this._friendlyTransactions(
 		blockchainAPIRequest('rawaddr/' + _this.address)
@@ -398,15 +398,15 @@ Wallet.prototype.getTransactionHistory = function ()  {
 };
 
 Wallet.prototype.send = function (recipientAddress, amount)  {
-	var _this = this;
+	const _this = this;
 
 	return _this
 		.createTransaction(recipientAddress, amount)
 		.then(function (transaction)  {
-			var txid = transaction.id;
+			const txid = transaction.id;
 			_this.originatingTransactions[txid] = true;
 
-			var formData = new FormData();
+			const formData = new FormData();
 			formData.append('tx', transaction.serialize());
 
 			return request(blockchainAPI('pushtx'), {
@@ -423,9 +423,9 @@ Wallet.prototype.watchNewTransactions = function (shouldIncludeUnconfirmed)  {
 		shouldIncludeUnconfirmed = true;
 	}
 
-	var _this = this;
+	const _this = this;
 
-	var subjectID = 'watchNewTransactions ' + _this.address;
+	const subjectID = 'watchNewTransactions ' + _this.address;
 
 	if (!_this.subjects[subjectID]) {
 		_this.subjects[subjectID] = _this._watchTransactions().pipe(
@@ -465,9 +465,9 @@ Wallet.prototype.watchTransactionHistory = function (
 		shouldIncludeUnconfirmed = true;
 	}
 
-	var _this = this;
+	const _this = this;
 
-	var subjectID = 'watchTransactionHistory ' + _this.address;
+	const subjectID = 'watchTransactionHistory ' + _this.address;
 
 	if (!_this.subjects[subjectID]) {
 		_this.subjects[subjectID] = new ReplaySubject(1);
@@ -499,7 +499,7 @@ Wallet.prototype.watchTransactionHistory = function (
 		);
 };
 
-var simplebtc = {
+const simplebtc = {
 	getExchangeRates: getExchangeRates,
 	minimumTransactionAmount:
 		BitcoreTransaction.DUST_AMOUNT / satoshiConversion,
