@@ -6,6 +6,7 @@ const isNode =
 
 const rootScope = isNode ? global : self;
 
+const {isValid: addressIsValid} = require('bitcore-lib/lib/address');
 const BitcorePrivateKey = require('bitcore-lib/lib/privatekey');
 const BitcoreTransaction = require('bitcore-lib/lib/transaction');
 const FormData = require('form-data');
@@ -127,6 +128,10 @@ class Wallet {
 
 		this.originatingTransactions = {};
 		this.subjects = {};
+
+		if (!addressIsValid(this.address)) {
+			throw new Error(`Invalid Address: ${this.address}.`);
+		}
 	}
 
 	_friendlyTransaction (transaction, exchangeRate) {
