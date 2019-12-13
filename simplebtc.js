@@ -133,8 +133,6 @@ class Wallet {
 	}
 
 	_friendlyTransaction (transaction, exchangeRate)  {
-		const _this = this;
-
 		const senderAddresses = {};
 		const recipientAddresses = {};
 
@@ -157,7 +155,7 @@ class Wallet {
 
 		for (const vin of transaction.inputs.map(o => o.prev_out)) {
 			transactionData.wasSentByMe =
-				transactionData.wasSentByMe || vin.addr === _this.address;
+				transactionData.wasSentByMe || vin.addr === this.address;
 
 			vin.valueLocal = vin.value * exchangeRate;
 
@@ -192,12 +190,10 @@ class Wallet {
 	}
 
 	_friendlyTransactions (transactions)  {
-		const _this = this;
-
-		return Promise.all([transactions, _this._getExchangeRates()]).then(
+		return Promise.all([transactions, this._getExchangeRates()]).then(
 			results => {
 				const txs = results[0].txs || [];
-				const exchangeRate = results[1][_this.localCurrency];
+				const exchangeRate = results[1][this.localCurrency];
 
 				return txs.map(tx => friendlyTransaction(tx, exchangeRate));
 			}
@@ -205,18 +201,16 @@ class Wallet {
 	}
 
 	_watchTransactions ()  {
-		const _this = this;
+		const subjectID = `_watchTransactions ${this.address}`;
 
-		const subjectID = `_watchTransactions ${_this.address}`;
-
-		if (!_this.subjects[subjectID]) {
-			_this.subjects[subjectID] = new Subject();
+		if (!this.subjects[subjectID]) {
+			this.subjects[subjectID] = new Subject();
 
 			const socket = new WebSocket(blockchainWebSocketURL);
 
 			socket.onopen = () => {
 				socket.send(
-					JSON.stringify({op: 'addr_sub', addr: _this.address})
+					JSON.stringify({op: 'addr_sub', addr: this.address})
 				);
 			};
 
@@ -228,24 +222,22 @@ class Wallet {
 				catch (_) {}
 
 				if (txid) {
-					_this.subjects[subjectID].next(JSON.parse(msg.data).x.hash);
+					this.subjects[subjectID].next(JSON.parse(msg.data).x.hash);
 				}
 			};
 		}
 
-		return _this.subjects[subjectID];
+		return this.subjects[subjectID];
 	}
 
 	createTransaction (recipientAddress, amount)  {
-		const _this = this;
-
-		if (_this.isReadOnly) {
+		if (this.isReadOnly) {
 			return Promise.reject(new Error('Read-only wallet'));
 		}
 
 		return Promise.all([
-			_this.getBalance(),
-			blockchainAPIRequest('unspent', {active: _this.address}).catch(
+			this.getBalance(),
+			blockchainAPIRequest('unspent', {active: this.address}).catch(
 				() => ({
 					unspent_outputs: []
 				})
@@ -260,7 +252,7 @@ class Wallet {
 				txid: o.tx_hash_big_endian
 			}));
 
-			amount = amount / balance._exchangeRates[_this.localCurrency];
+			amount = amount / balance._exchangeRates[this.localCurrency];
 
 			if (amount > balance.btc) {
 				throw new Error('Insufficient funds');
@@ -268,7 +260,7 @@ class Wallet {
 
 			for (const utxo of utxos) {
 				if (
-					_this.originatingTransactions[utxo.txid] &&
+					this.originatingTransactions[utxo.txid] &&
 					!utxo.confirmations
 				) {
 					utxo.confirmations = 1;
@@ -292,9 +284,9 @@ class Wallet {
 								recipientAddress,
 							Math.floor(amount * satoshiConversion)
 						)
-						.change(_this.address)
+						.change(this.address)
 						.fee(transactionFee)
-						.sign(_this.key);
+						.sign(this.key);
 				}
 				catch (e) {
 					if (
@@ -313,16 +305,14 @@ class Wallet {
 	}
 
 	getBalance ()  {
-		const _this = this;
-
 		return Promise.all([
-			blockchainAPIRequest('balance', {active: _this.address}),
-			_this._getExchangeRates()
+			blockchainAPIRequest('balance', {active: this.address}),
+			this._getExchangeRates()
 		]).then(results => {
 			let balance = 0;
 			try {
 				balance =
-					results[0][_this.address].final_balance / satoshiConversion;
+					results[0][this.address].final_balance / satoshiConversion;
 			}
 			catch (_) {}
 
@@ -333,7 +323,7 @@ class Wallet {
 				btc: balance,
 				local: parseFloat(
 					(
-						balance * (exchangeRates[_this.localCurrency] || 0)
+						balance * (exchangeRates[this.localCurrency] || 0)
 					).toFixed(2)
 				)
 			};
@@ -341,21 +331,16 @@ class Wallet {
 	}
 
 	getTransactionHistory ()  {
-		const _this = this;
-
-		return _this._friendlyTransactions(
-			blockchainAPIRequest(`rawaddr/${_this.address}`)
+		return this._friendlyTransactions(
+			blockchainAPIRequest(`rawaddr/${this.address}`)
 		);
 	}
 
 	send (recipientAddress, amount)  {
-		const _this = this;
-
-		return _this
-			.createTransaction(recipientAddress, amount)
-			.then(transaction => {
+		return this.createTransaction(recipientAddress, amount).then(
+			transaction => {
 				const txid = transaction.id;
-				_this.originatingTransactions[txid] = true;
+				this.originatingTransactions[txid] = true;
 
 				const formData = new FormData();
 				formData.append('tx', transaction.serialize());
@@ -364,7 +349,8 @@ class Wallet {
 					body: formData,
 					method: 'POST'
 				}).then(o => o.text());
-			});
+			}
+		);
 	}
 
 	watchNewTransactions (shouldIncludeUnconfirmed)  {
@@ -372,31 +358,23 @@ class Wallet {
 			shouldIncludeUnconfirmed = true;
 		}
 
-		const _this = this;
+		const subjectID = `watchNewTransactions ${this.address}`;
 
-		const subjectID = `watchNewTransactions ${_this.address}`;
-
-		if (!_this.subjects[subjectID]) {
-			_this.subjects[subjectID] = _this
-				._watchTransactions()
-				.pipe(
-					mergeMap(txid =>
-						lock(subjectID, () =>
-							_this
-								._friendlyTransactions(
-									blockchainAPIRequest(
-										`rawtx/${txid}`
-									).then(o => [o])
-								)
-								.then(newTransaction => newTransaction[0])
-						)
+		if (!this.subjects[subjectID]) {
+			this.subjects[subjectID] = this._watchTransactions().pipe(
+				mergeMap(txid =>
+					lock(subjectID, () =>
+						this._friendlyTransactions(
+							blockchainAPIRequest(`rawtx/${txid}`).then(o => [o])
+						).then(newTransaction => newTransaction[0])
 					)
-				);
+				)
+			);
 		}
 
 		return shouldIncludeUnconfirmed ?
-			_this.subjects[subjectID] :
-			_this.subjects[subjectID].pipe(
+			this.subjects[subjectID] :
+			this.subjects[subjectID].pipe(
 				map(transactions =>
 					transactions.filter(transaction => transaction.isConfirmed)
 				)
@@ -408,30 +386,27 @@ class Wallet {
 			shouldIncludeUnconfirmed = true;
 		}
 
-		const _this = this;
+		const subjectID = `watchTransactionHistory ${this.address}`;
 
-		const subjectID = `watchTransactionHistory ${_this.address}`;
+		if (!this.subjects[subjectID]) {
+			this.subjects[subjectID] = new ReplaySubject(1);
 
-		if (!_this.subjects[subjectID]) {
-			_this.subjects[subjectID] = new ReplaySubject(1);
+			this.getTransactionHistory().then(transactions => {
+				this.subjects[subjectID].next(transactions);
 
-			_this.getTransactionHistory().then(transactions => {
-				_this.subjects[subjectID].next(transactions);
-
-				_this
-					._watchTransactions()
+				this._watchTransactions()
 					.pipe(
 						mergeMap(() =>
-							lock(subjectID, () => _this.getTransactionHistory())
+							lock(subjectID, () => this.getTransactionHistory())
 						)
 					)
-					.subscribe(_this.subjects[subjectID]);
+					.subscribe(this.subjects[subjectID]);
 			});
 		}
 
 		return shouldIncludeUnconfirmed ?
-			_this.subjects[subjectID] :
-			_this.subjects[subjectID].pipe(
+			this.subjects[subjectID] :
+			this.subjects[subjectID].pipe(
 				map(transactions =>
 					transactions.filter(transaction => transaction.isConfirmed)
 				)
