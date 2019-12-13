@@ -1,42 +1,42 @@
 #!/usr/bin/env node
 
+const fs = require('fs');
+const {Wallet} = require('./simplebtc');
 
-const fs		= require('fs');
-const {Wallet}	= require('./simplebtc');
-
-const readLine	= require('readline').createInterface({
+const readLine = require('readline').createInterface({
 	input: process.stdin,
 	output: process.stdout,
 	terminal: false
 });
 
-const args		= process.argv.slice(2);
+const args = process.argv.slice(2);
 
-const simplebtcrcPath	= require('path').join(
-	process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'],
+const simplebtcrcPath = require('path').join(
+	process.env[process.platform == 'win32' ? 'USERPROFILE' : 'HOME'],
 	'.simplebtcrc'
 );
 
-const options	= {};
+const options = {};
 
-
-const formatTransaction	= tx => {
-	const o	= {...tx};
+const formatTransaction = tx => {
+	const o = {...tx};
 	delete o.baseTransaction;
 	return o;
 };
 
-const dothemove	= async () => {
-	const wallet	= new Wallet(options);
+const dothemove = async () => {
+	const wallet = new Wallet(options);
 
 	if (!(options.wif || options.address)) {
-		console.log('\nNew wallet created with address ' + wallet.address + '\n');
+		console.log(
+			'\nNew wallet created with address ' + wallet.address + '\n'
+		);
 
 		if (wallet.key) {
-			options.wif	= wallet.key.toWIF();
+			options.wif = wallet.key.toWIF();
 		}
 		else {
-			options.address	= wallet.address;
+			options.address = wallet.address;
 		}
 	}
 
@@ -57,7 +57,9 @@ const dothemove	= async () => {
 			return;
 
 		case 'history':
-			console.log((await wallet.getTransactionHistory()).map(formatTransaction));
+			console.log(
+				(await wallet.getTransactionHistory()).map(formatTransaction)
+			);
 			process.exit();
 
 			return;
@@ -70,11 +72,13 @@ const dothemove	= async () => {
 			return;
 
 		case 'send':
-			const recipient	= args[1];
-			const amount	= args[2];
+			const recipient = args[1];
+			const amount = args[2];
 
 			if (recipient && amount) {
-				console.log(await wallet.send(recipient, amount).catch(err => ({err})));
+				console.log(
+					await wallet.send(recipient, amount).catch(err => ({err}))
+				);
 				process.exit();
 
 				return;
@@ -94,11 +98,15 @@ const dothemove	= async () => {
 	);
 
 	process.exit();
-}
-
+};
 
 try {
-	options	= JSON.parse(fs.readFileSync(simplebtcrcPath).toString().trim());
+	options = JSON.parse(
+		fs
+			.readFileSync(simplebtcrcPath)
+			.toString()
+			.trim()
+	);
 }
 catch (_) {}
 
@@ -107,10 +115,10 @@ if (options.wif || options.address) {
 }
 else {
 	readLine.question('Local currency code (e.g. USD): ', localCurrency => {
-		options.localCurrency	= localCurrency.trim();
+		options.localCurrency = localCurrency.trim();
 
 		readLine.question('Bitcoin wallet WIF (optional): ', wif => {
-			options.wif	= wif.trim();
+			options.wif = wif.trim();
 
 			if (options.wif) {
 				dothemove();
@@ -118,10 +126,13 @@ else {
 			else {
 				delete options.wif;
 
-				readLine.question('Bitcoin wallet address (optional, read-only): ', address => {
-					options.address	= address.trim();
-					dothemove();
-				});
+				readLine.question(
+					'Bitcoin wallet address (optional, read-only): ',
+					address => {
+						options.address = address.trim();
+						dothemove();
+					}
+				);
 			}
 		});
 	});

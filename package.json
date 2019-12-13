@@ -33,7 +33,33 @@
 		"rxjs": "^6",
 		"whatwg-fetch": "*"
 	},
+	"devDependencies": {
+		"@cyph/prettier": "*",
+		"@cyph/pretty-quick": "*",
+		"husky": "*"
+	},
 	"bin": {
 		"simplebtc": "simplebtc-cli.js"
+	},
+	"husky": {
+		"hooks": {
+			"pre-commit": "npx cyph-pretty-quick --staged --pattern '*.{css,html,js,json,scss,ts,tsx}'"
+		}
+	},
+	"prettier": {
+		"arrowParens": "avoid",
+		"bracketSpacing": false,
+		"endOfLine": "lf",
+		"htmlWhitespaceSensitivity": "css",
+		"jsxBracketSameLine": false,
+		"jsxSingleQuote": false,
+		"printWidth": 80,
+		"proseWrap": "always",
+		"quoteProps": "consistent",
+		"semi": true,
+		"singleQuote": true,
+		"tabWidth": 4,
+		"trailingComma": "none",
+		"useTabs": true
 	}
 }

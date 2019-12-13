@@ -1,7 +1,6 @@
 import {PrivateKey} from 'bitcore-lib';
 import {Observable} from 'rxjs';
 
-
 declare module 'simplebtc' {
 	/** A Bitcoin transaction record. */
 	interface Transaction {
@@ -48,7 +47,7 @@ declare module 'simplebtc' {
 		readonly localCurrency: string;
 
 		/** Wallet private key. */
-		readonly key: PrivateKey&{
+		readonly key: PrivateKey & {
 			toBuffer: () => Uint8Array;
 			toWIF: () => string;
 		};
@@ -65,7 +64,10 @@ declare module 'simplebtc' {
 		 * @returns Server broadcast method response message.
 		 */
 		send (
-			recipientAddress: string|Wallet|{getAddress: () => {toString: () => string}},
+			recipientAddress:
+				| string
+				| Wallet
+				| {getAddress: () => {toString: () => string}},
 			amount: number
 		) : Promise<string>;
 
@@ -75,12 +77,16 @@ declare module 'simplebtc' {
 		/** Watches transaction history. */
 		watchTransactionHistory () : Observable<Transaction[]>;
 
-		constructor (options?: Wallet|{
-			address?: string;
-			insightBaseURL?: string;
-			key?: Uint8Array|string;
-			localCurrency?: string;
-		});
+		constructor (
+			options?:
+				| Wallet
+				| {
+						address?: string;
+						insightBaseURL?: string;
+						key?: Uint8Array | string;
+						localCurrency?: string;
+				  }
+		);
 	}
 
 	/** Minimum ("dust") transaction amount. */
