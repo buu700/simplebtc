@@ -37,9 +37,7 @@ const sleep = async (ms = 250) =>
 		setTimeout(resolve, ms);
 	});
 
-const request = async (url, opts) => {
-	let retries = 0;
-
+const request = async (url, opts, maxRetries = 10, retries = 0) => {
 	try {
 		const o = await lock('request', async () => fetch(url, opts));
 
@@ -50,13 +48,12 @@ const request = async (url, opts) => {
 		return o;
 	}
 	catch (err) {
-		if (retries > 10) {
+		if (retries >= maxRetries) {
 			throw err;
 		}
-		++retries;
 
 		await sleep();
-		return request(url, opts);
+		return request(url, opts, maxRetries, retries + 1);
 	}
 };
 
