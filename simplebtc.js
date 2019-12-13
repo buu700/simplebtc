@@ -151,301 +151,313 @@ function friendlyTransaction (_this, transaction, exchangeRate)  {
 	};
 }
 
-const Wallet = function (options = {})  {
-	if (options instanceof Wallet) {
-		this.address = options.address;
-		this.isReadOnly = options.isReadOnly;
-		this.localCurrency = options.localCurrency;
-		this.key = options.key;
-		this.originatingTransactions = options.originatingTransactions;
-		this.subjects = {};
+class Wallet {
+	constructor (options = {}) {
+		if (options instanceof Wallet) {
+			this.address = options.address;
+			this.isReadOnly = options.isReadOnly;
+			this.localCurrency = options.localCurrency;
+			this.key = options.key;
+			this.originatingTransactions = options.originatingTransactions;
+			this.subjects = {};
 
-		return;
-	}
-
-	this.localCurrency = options.localCurrency || 'BTC';
-
-	if (options.key) {
-		this.key =
-			typeof options.key === 'string' ?
-				new BitcorePrivateKey(options.key, 'livenet') :
-				BitcorePrivateKey.fromObject({
-					bn: options.key,
-					compressed: true,
-					network: 'livenet'
-				});
-	}
-	else if (!options.address) {
-		this.key = new BitcorePrivateKey(undefined, 'livenet');
-	}
-
-	this.isReadOnly = !this.key;
-	this.address = this.isReadOnly ?
-		options.address :
-		this.key.toAddress().toString();
-
-	this.originatingTransactions = {};
-	this.subjects = {};
-};
-
-Wallet.prototype._getExchangeRates = function ()  {
-	return this.localCurrency === 'BTC' ?
-		Promise.resolve({BTC: 1}) :
-		getExchangeRates();
-};
-
-Wallet.prototype._friendlyTransactions = function (transactions)  {
-	const _this = this;
-
-	return Promise.all([transactions, _this._getExchangeRates()]).then(
-		results => {
-			const txs = results[0].txs || [];
-			const exchangeRate = results[1][_this.localCurrency];
-
-			return txs.map(tx => friendlyTransaction(_this, tx, exchangeRate));
+			return;
 		}
-	);
-};
 
-Wallet.prototype._watchTransactions = function ()  {
-	const _this = this;
+		this.localCurrency = options.localCurrency || 'BTC';
 
-	const subjectID = `_watchTransactions ${_this.address}`;
+		if (options.key) {
+			this.key =
+				typeof options.key === 'string' ?
+					new BitcorePrivateKey(options.key, 'livenet') :
+					BitcorePrivateKey.fromObject({
+						bn: options.key,
+						compressed: true,
+						network: 'livenet'
+					});
+		}
+		else if (!options.address) {
+			this.key = new BitcorePrivateKey(undefined, 'livenet');
+		}
 
-	if (!_this.subjects[subjectID]) {
-		_this.subjects[subjectID] = new Subject();
+		this.isReadOnly = !this.key;
+		this.address = this.isReadOnly ?
+			options.address :
+			this.key.toAddress().toString();
 
-		const socket = new WebSocket(blockchainWebSocketURL);
+		this.originatingTransactions = {};
+		this.subjects = {};
+	}
 
-		socket.onopen = () => {
-			socket.send(JSON.stringify({op: 'addr_sub', addr: _this.address}));
-		};
+	_getExchangeRates ()  {
+		return this.localCurrency === 'BTC' ?
+			Promise.resolve({BTC: 1}) :
+			getExchangeRates();
+	}
 
-		socket.onmessage = msg => {
-			let txid;
+	_friendlyTransactions (transactions)  {
+		const _this = this;
+
+		return Promise.all([transactions, _this._getExchangeRates()]).then(
+			results => {
+				const txs = results[0].txs || [];
+				const exchangeRate = results[1][_this.localCurrency];
+
+				return txs.map(tx =>
+					friendlyTransaction(_this, tx, exchangeRate)
+				);
+			}
+		);
+	}
+
+	_watchTransactions ()  {
+		const _this = this;
+
+		const subjectID = `_watchTransactions ${_this.address}`;
+
+		if (!_this.subjects[subjectID]) {
+			_this.subjects[subjectID] = new Subject();
+
+			const socket = new WebSocket(blockchainWebSocketURL);
+
+			socket.onopen = () => {
+				socket.send(
+					JSON.stringify({op: 'addr_sub', addr: _this.address})
+				);
+			};
+
+			socket.onmessage = msg => {
+				let txid;
+				try {
+					txid = JSON.parse(msg.data).x.hash;
+				}
+				catch (_) {}
+
+				if (txid) {
+					_this.subjects[subjectID].next(JSON.parse(msg.data).x.hash);
+				}
+			};
+		}
+
+		return _this.subjects[subjectID];
+	}
+
+	/*
+    Wallet.prototype.calculateTransactionFee = function (
+        amount
+    ) {
+        var _this = this;
+
+        return _this
+            .createTransaction('1Cyph47AKhyG8mP9SPxd2ELTB2iGyJjfnd', amount)
+            .then(function (transaction) {
+                return transaction.getFee() / satoshiConversion;
+            });
+    };
+    */
+
+	createTransaction (recipientAddress, amount)  {
+		const _this = this;
+
+		if (_this.isReadOnly) {
+			return Promise.reject(new Error('Read-only wallet'));
+		}
+
+		return Promise.all([
+			_this.getBalance(),
+			blockchainAPIRequest('unspent', {active: _this.address}).catch(
+				() => ({
+					unspent_outputs: []
+				})
+			)
+		]).then(results => {
+			const balance = results[0];
+
+			const utxos = ((results[1] || {}).unspent_outputs || []).map(o => ({
+				outputIndex: o.tx_output_n,
+				satoshis: o.value,
+				scriptPubKey: o.script,
+				txid: o.tx_hash_big_endian
+			}));
+
+			amount = amount / balance._exchangeRates[_this.localCurrency];
+
+			if (amount > balance.btc) {
+				throw new Error('Insufficient funds');
+			}
+
+			for (const utxo of utxos) {
+				if (
+					_this.originatingTransactions[utxo.txid] &&
+					!utxo.confirmations
+				) {
+					utxo.confirmations = 1;
+				}
+			}
+
+			return (function createBitcoreTransaction (retries)  {
+				try {
+					return new BitcoreTransaction()
+						.from(
+							utxos.map(
+								utxo =>
+									new BitcoreTransaction.UnspentOutput(utxo)
+							)
+						)
+						.to(
+							recipientAddress.address ?
+								recipientAddress.address :
+							recipientAddress.getAddress ?
+								recipientAddress.getAddress().toString() :
+								recipientAddress,
+							Math.floor(amount * satoshiConversion)
+						)
+						.change(_this.address)
+						.fee(transactionFee)
+						.sign(_this.key);
+				}
+				catch (e) {
+					if (
+						retries < 100 &&
+						e.message.includes('totalNeededAmount')
+					) {
+						amount -= 0.000005;
+						return createBitcoreTransaction(retries + 1);
+					}
+					else {
+						throw e;
+					}
+				}
+			})(0);
+		});
+	}
+
+	getBalance ()  {
+		const _this = this;
+
+		return Promise.all([
+			blockchainAPIRequest('balance', {active: _this.address}),
+			_this._getExchangeRates()
+		]).then(results => {
+			let balance = 0;
 			try {
-				txid = JSON.parse(msg.data).x.hash;
+				balance =
+					results[0][_this.address].final_balance / satoshiConversion;
 			}
 			catch (_) {}
 
-			if (txid) {
-				_this.subjects[subjectID].next(JSON.parse(msg.data).x.hash);
-			}
-		};
-	}
+			const exchangeRates = results[1];
 
-	return _this.subjects[subjectID];
-};
-
-/*
-Wallet.prototype.calculateTransactionFee = function (
-	amount
-) {
-	var _this = this;
-
-	return _this
-		.createTransaction('1Cyph47AKhyG8mP9SPxd2ELTB2iGyJjfnd', amount)
-		.then(function (transaction) {
-			return transaction.getFee() / satoshiConversion;
+			return {
+				_exchangeRates: exchangeRates,
+				btc: balance,
+				local: parseFloat(
+					(
+						balance * (exchangeRates[_this.localCurrency] || 0)
+					).toFixed(2)
+				)
+			};
 		});
-};
-*/
-
-Wallet.prototype.createTransaction = function (recipientAddress, amount)  {
-	const _this = this;
-
-	if (_this.isReadOnly) {
-		return Promise.reject(new Error('Read-only wallet'));
 	}
 
-	return Promise.all([
-		_this.getBalance(),
-		blockchainAPIRequest('unspent', {active: _this.address}).catch(() => ({
-			unspent_outputs: []
-		}))
-	]).then(results => {
-		const balance = results[0];
+	getTransactionHistory ()  {
+		const _this = this;
 
-		const utxos = ((results[1] || {}).unspent_outputs || []).map(o => ({
-			outputIndex: o.tx_output_n,
-			satoshis: o.value,
-			scriptPubKey: o.script,
-			txid: o.tx_hash_big_endian
-		}));
+		return _this._friendlyTransactions(
+			blockchainAPIRequest(`rawaddr/${_this.address}`)
+		);
+	}
 
-		amount = amount / balance._exchangeRates[_this.localCurrency];
+	send (recipientAddress, amount)  {
+		const _this = this;
 
-		if (amount > balance.btc) {
-			throw new Error('Insufficient funds');
+		return _this
+			.createTransaction(recipientAddress, amount)
+			.then(transaction => {
+				const txid = transaction.id;
+				_this.originatingTransactions[txid] = true;
+
+				const formData = new FormData();
+				formData.append('tx', transaction.serialize());
+
+				return request(blockchainAPI('pushtx'), {
+					body: formData,
+					method: 'POST'
+				}).then(o => o.text());
+			});
+	}
+
+	watchNewTransactions (shouldIncludeUnconfirmed)  {
+		if (shouldIncludeUnconfirmed === undefined) {
+			shouldIncludeUnconfirmed = true;
 		}
 
-		for (const utxo of utxos) {
-			if (
-				_this.originatingTransactions[utxo.txid] &&
-				!utxo.confirmations
-			) {
-				utxo.confirmations = 1;
-			}
-		}
+		const _this = this;
 
-		return (function createBitcoreTransaction (retries)  {
-			try {
-				return new BitcoreTransaction()
-					.from(
-						utxos.map(
-							utxo => new BitcoreTransaction.UnspentOutput(utxo)
+		const subjectID = `watchNewTransactions ${_this.address}`;
+
+		if (!_this.subjects[subjectID]) {
+			_this.subjects[subjectID] = _this
+				._watchTransactions()
+				.pipe(
+					mergeMap(txid =>
+						lock(subjectID, () =>
+							_this
+								._friendlyTransactions(
+									blockchainAPIRequest(
+										`rawtx/${txid}`
+									).then(o => [o])
+								)
+								.then(newTransaction => newTransaction[0])
 						)
 					)
-					.to(
-						recipientAddress.address ?
-							recipientAddress.address :
-						recipientAddress.getAddress ?
-							recipientAddress.getAddress().toString() :
-							recipientAddress,
-						Math.floor(amount * satoshiConversion)
-					)
-					.change(_this.address)
-					.fee(transactionFee)
-					.sign(_this.key);
-			}
-			catch (e) {
-				if (retries < 100 && e.message.includes('totalNeededAmount')) {
-					amount -= 0.000005;
-					return createBitcoreTransaction(retries + 1);
-				}
-				else {
-					throw e;
-				}
-			}
-		})(0);
-	});
-};
-
-Wallet.prototype.getBalance = function ()  {
-	const _this = this;
-
-	return Promise.all([
-		blockchainAPIRequest('balance', {active: _this.address}),
-		_this._getExchangeRates()
-	]).then(results => {
-		let balance = 0;
-		try {
-			balance =
-				results[0][_this.address].final_balance / satoshiConversion;
+				);
 		}
-		catch (_) {}
 
-		const exchangeRates = results[1];
-
-		return {
-			_exchangeRates: exchangeRates,
-			btc: balance,
-			local: parseFloat(
-				(balance * (exchangeRates[_this.localCurrency] || 0)).toFixed(2)
-			)
-		};
-	});
-};
-
-Wallet.prototype.getTransactionHistory = function ()  {
-	const _this = this;
-
-	return _this._friendlyTransactions(
-		blockchainAPIRequest(`rawaddr/${_this.address}`)
-	);
-};
-
-Wallet.prototype.send = function (recipientAddress, amount)  {
-	const _this = this;
-
-	return _this
-		.createTransaction(recipientAddress, amount)
-		.then(transaction => {
-			const txid = transaction.id;
-			_this.originatingTransactions[txid] = true;
-
-			const formData = new FormData();
-			formData.append('tx', transaction.serialize());
-
-			return request(blockchainAPI('pushtx'), {
-				body: formData,
-				method: 'POST'
-			}).then(o => o.text());
-		});
-};
-
-Wallet.prototype.watchNewTransactions = function (shouldIncludeUnconfirmed)  {
-	if (shouldIncludeUnconfirmed === undefined) {
-		shouldIncludeUnconfirmed = true;
-	}
-
-	const _this = this;
-
-	const subjectID = `watchNewTransactions ${_this.address}`;
-
-	if (!_this.subjects[subjectID]) {
-		_this.subjects[subjectID] = _this
-			._watchTransactions()
-			.pipe(
-				mergeMap(txid =>
-					lock(subjectID, () =>
-						_this
-							._friendlyTransactions(
-								blockchainAPIRequest(
-									`rawtx/${txid}`
-								).then(o => [o])
-							)
-							.then(newTransaction => newTransaction[0])
-					)
+		return shouldIncludeUnconfirmed ?
+			_this.subjects[subjectID] :
+			_this.subjects[subjectID].pipe(
+				map(transactions =>
+					transactions.filter(transaction => transaction.isConfirmed)
 				)
 			);
 	}
 
-	return shouldIncludeUnconfirmed ?
-		_this.subjects[subjectID] :
-		_this.subjects[subjectID].pipe(
-			map(transactions =>
-				transactions.filter(transaction => transaction.isConfirmed)
-			)
-		);
-};
+	watchTransactionHistory (shouldIncludeUnconfirmed)  {
+		if (shouldIncludeUnconfirmed === undefined) {
+			shouldIncludeUnconfirmed = true;
+		}
 
-Wallet.prototype.watchTransactionHistory = function (
-	shouldIncludeUnconfirmed
-)  {
-	if (shouldIncludeUnconfirmed === undefined) {
-		shouldIncludeUnconfirmed = true;
-	}
+		const _this = this;
 
-	const _this = this;
+		const subjectID = `watchTransactionHistory ${_this.address}`;
 
-	const subjectID = `watchTransactionHistory ${_this.address}`;
+		if (!_this.subjects[subjectID]) {
+			_this.subjects[subjectID] = new ReplaySubject(1);
 
-	if (!_this.subjects[subjectID]) {
-		_this.subjects[subjectID] = new ReplaySubject(1);
+			_this.getTransactionHistory().then(transactions => {
+				_this.subjects[subjectID].next(transactions);
 
-		_this.getTransactionHistory().then(transactions => {
-			_this.subjects[subjectID].next(transactions);
-
-			_this
-				._watchTransactions()
-				.pipe(
-					mergeMap(() =>
-						lock(subjectID, () => _this.getTransactionHistory())
+				_this
+					._watchTransactions()
+					.pipe(
+						mergeMap(() =>
+							lock(subjectID, () => _this.getTransactionHistory())
+						)
 					)
-				)
-				.subscribe(_this.subjects[subjectID]);
-		});
-	}
+					.subscribe(_this.subjects[subjectID]);
+			});
+		}
 
-	return shouldIncludeUnconfirmed ?
-		_this.subjects[subjectID] :
-		_this.subjects[subjectID].pipe(
-			map(transactions =>
-				transactions.filter(transaction => transaction.isConfirmed)
-			)
-		);
-};
+		return shouldIncludeUnconfirmed ?
+			_this.subjects[subjectID] :
+			_this.subjects[subjectID].pipe(
+				map(transactions =>
+					transactions.filter(transaction => transaction.isConfirmed)
+				)
+			);
+	}
+}
 
 const simplebtc = {
 	getExchangeRates,
