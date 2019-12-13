@@ -126,12 +126,6 @@ class Wallet {
 		this.subjects = {};
 	}
 
-	_getExchangeRates ()  {
-		return this.localCurrency === 'BTC' ?
-			Promise.resolve({BTC: 1}) :
-			getExchangeRates();
-	}
-
 	_friendlyTransaction (transaction, exchangeRate)  {
 		const senderAddresses = {};
 		const recipientAddresses = {};
@@ -198,6 +192,12 @@ class Wallet {
 				return txs.map(tx => friendlyTransaction(tx, exchangeRate));
 			}
 		);
+	}
+
+	_getExchangeRates ()  {
+		return this.localCurrency === 'BTC' ?
+			Promise.resolve({BTC: 1}) :
+			getExchangeRates();
 	}
 
 	_watchTransactions ()  {
