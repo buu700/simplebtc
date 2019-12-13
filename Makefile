@@ -4,6 +4,8 @@ all:
 
 	npm install
 
+	npx babel simplebtc.js -o dist/simplebtc.js --presets=@babel/preset-env
+
 	webpack --mode none --output-library-target var --output-library simplebtc simplebtc.js -o dist/simplebtc.js
 
 	echo " \
@@ -15,8 +17,6 @@ all:
 		} \
 	" >> dist/simplebtc.js
 	terser dist/simplebtc.js -cmo dist/simplebtc.js
-
-	rm -rf node_modules package-lock.json
 
 clean:
 	rm -rf dist node_modules package-lock.json

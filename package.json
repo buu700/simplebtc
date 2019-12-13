@@ -5,6 +5,7 @@
 	"main": "simplebtc.js",
 	"types": "simplebtc.d.ts",
 	"scripts": {
+		"build": "make",
 		"test": "echo \"Error: no test specified\" ; exit 1",
 		"setUpBashCompletion": "mkdir -p /etc/bash_completion.d/ > /dev/null 2>&1 ; bash -c \"echo 'complete -W \\\"address balance history stream send\\\" simplebtc' > /etc/bash_completion.d/simplebtc\" > /dev/null 2>&1 ; exit 0"
 	},
@@ -34,9 +35,13 @@
 		"whatwg-fetch": "*"
 	},
 	"devDependencies": {
+		"@babel/cli": "^7",
+		"@babel/core": "^7",
+		"@babel/preset-env": "^7",
 		"@cyph/prettier": "*",
 		"@cyph/pretty-quick": "*",
-		"husky": "*"
+		"husky": "*",
+		"webpack": "^4"
 	},
 	"bin": {
 		"simplebtc": "simplebtc-cli.js"
