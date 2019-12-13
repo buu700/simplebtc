@@ -41,7 +41,8 @@
 		"@cyph/prettier": "*",
 		"@cyph/pretty-quick": "*",
 		"husky": "*",
-		"webpack": "^4"
+		"webpack": "^4",
+		"webpack-cli": "^3"
 	},
 	"bin": {
 		"simplebtc": "simplebtc-cli.js"
