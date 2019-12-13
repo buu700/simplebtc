@@ -19,14 +19,6 @@ const fetch =
 		eval('require')('node-fetch') :
 		require('whatwg-fetch');
 
-/*
-var storage		= typeof rootScope.localStorage === 'object' ? localStorage : (function () {
-	var nodePersist	= eval('require')('node-persist');
-	nodePersist.initSync();
-	return nodePersist;
-})();
-*/
-
 const locks = {};
 
 function lock (id, f)  {
@@ -241,20 +233,6 @@ class Wallet {
 
 		return _this.subjects[subjectID];
 	}
-
-	/*
-    Wallet.prototype.calculateTransactionFee = function (
-        amount
-    ) {
-        var _this = this;
-
-        return _this
-            .createTransaction('1Cyph47AKhyG8mP9SPxd2ELTB2iGyJjfnd', amount)
-            .then(function (transaction) {
-                return transaction.getFee() / satoshiConversion;
-            });
-    };
-    */
 
 	createTransaction (recipientAddress, amount)  {
 		const _this = this;
