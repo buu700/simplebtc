@@ -387,19 +387,23 @@ class Wallet {
 			const subject = new ReplaySubject(1);
 			this.subjects[subjectID] = subject;
 
-			this.getTransactionHistory().then(transactions => {
-				subject.next(transactions);
+			this.getTransactionHistory()
+				.then(transactions => {
+					subject.next(transactions);
 
-				this._watchTransactions()
-					.pipe(
-						mergeMap(async () =>
-							lock(subjectID, async () =>
-								this.getTransactionHistory()
+					this._watchTransactions()
+						.pipe(
+							mergeMap(async () =>
+								lock(subjectID, async () =>
+									this.getTransactionHistory()
+								)
 							)
 						)
-					)
-					.subscribe(subject);
-			});
+						.subscribe(subject);
+				})
+				.catch(err => {
+					this.subjects[subjectID].error(err);
+				});
 		}
 
 		return shouldIncludeUnconfirmed ?
