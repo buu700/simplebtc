@@ -46,7 +46,7 @@ function request (url, opts)  {
 		.then(o => {
 			if (o.status !== 200) {
 				throw new Error(
-					'Request failure: status ' + o.status.toString()
+					`Request failure: status ${o.status.toString()}`
 				);
 			}
 
@@ -77,14 +77,9 @@ function blockchainAPI (url, params)  {
 		params.cors = true;
 	}
 
-	return (
-		blockchainApiURL +
-		url +
-		'?' +
-		Object.keys(params)
-			.map(k => k + '=' + params[k])
-			.join('&')
-	);
+	return `${blockchainApiURL + url}?${Object.keys(params)
+		.map(k => `${k}=${params[k]}`)
+		.join('&')}`;
 }
 
 function blockchainAPIRequest (url, params)  {
@@ -219,7 +214,7 @@ Wallet.prototype._friendlyTransactions = function (transactions)  {
 Wallet.prototype._watchTransactions = function ()  {
 	const _this = this;
 
-	const subjectID = '_watchTransactions ' + _this.address;
+	const subjectID = `_watchTransactions ${_this.address}`;
 
 	if (!_this.subjects[subjectID]) {
 		_this.subjects[subjectID] = new Subject();
@@ -363,7 +358,7 @@ Wallet.prototype.getTransactionHistory = function ()  {
 	const _this = this;
 
 	return _this._friendlyTransactions(
-		blockchainAPIRequest('rawaddr/' + _this.address)
+		blockchainAPIRequest(`rawaddr/${_this.address}`)
 	);
 };
 
@@ -393,7 +388,7 @@ Wallet.prototype.watchNewTransactions = function (shouldIncludeUnconfirmed)  {
 
 	const _this = this;
 
-	const subjectID = 'watchNewTransactions ' + _this.address;
+	const subjectID = `watchNewTransactions ${_this.address}`;
 
 	if (!_this.subjects[subjectID]) {
 		_this.subjects[subjectID] = _this
@@ -404,7 +399,7 @@ Wallet.prototype.watchNewTransactions = function (shouldIncludeUnconfirmed)  {
 						_this
 							._friendlyTransactions(
 								blockchainAPIRequest(
-									'rawtx/' + txid
+									`rawtx/${txid}`
 								).then(o => [o])
 							)
 							.then(newTransaction => newTransaction[0])
@@ -431,7 +426,7 @@ Wallet.prototype.watchTransactionHistory = function (
 
 	const _this = this;
 
-	const subjectID = 'watchTransactionHistory ' + _this.address;
+	const subjectID = `watchTransactionHistory ${_this.address}`;
 
 	if (!_this.subjects[subjectID]) {
 		_this.subjects[subjectID] = new ReplaySubject(1);
