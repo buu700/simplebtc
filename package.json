@@ -5,7 +5,7 @@
 	"main": "dist/simplebtc.js",
 	"types": "simplebtc.d.ts",
 	"scripts": {
-		"build": "npx babel simplebtc.js -o dist/simplebtc.js --presets=@babel/preset-env && webpack --mode none --output-library-target var --output-library simplebtc dist/simplebtc.js -o dist/simplebtc.global.js && terser dist/simplebtc.js -cmo dist/simplebtc.js && terser dist/simplebtc.global.js -cmo dist/simplebtc.global.js",
+		"build": "npx babel simplebtc.js -o dist/simplebtc.js && webpack --mode none --output-library-target var --output-library simplebtc dist/simplebtc.js -o dist/simplebtc.global.js && terser dist/simplebtc.js -cmo dist/simplebtc.js && terser dist/simplebtc.global.js -cmo dist/simplebtc.global.js",
 		"test": "echo \"Error: no test specified\" ; exit 1",
 		"setUpBashCompletion": "mkdir -p /etc/bash_completion.d/ > /dev/null 2>&1 ; bash -c \"echo 'complete -W \\\"address balance history stream send\\\" simplebtc' > /etc/bash_completion.d/simplebtc\" > /dev/null 2>&1 ; exit 0"
 	},
@@ -37,7 +37,9 @@
 	"devDependencies": {
 		"@babel/cli": "^7",
 		"@babel/core": "^7",
+		"@babel/plugin-transform-runtime": "^7",
 		"@babel/preset-env": "^7",
+		"@babel/runtime": "^7",
 		"@cyph/prettier": "*",
 		"@cyph/pretty-quick": "*",
 		"husky": "*",
