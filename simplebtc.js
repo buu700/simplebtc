@@ -52,7 +52,7 @@ const request = async (url, opts, maxRetries = 10, retries = 0) => {
 			throw err;
 		}
 
-		await sleep();
+		await sleep(1000);
 		return request(url, opts, maxRetries, retries + 1);
 	}
 };
