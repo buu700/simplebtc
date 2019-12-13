@@ -309,10 +309,7 @@ Wallet.prototype.createTransaction = function (recipientAddress, amount)  {
 					.sign(_this.key);
 			}
 			catch (e) {
-				if (
-					retries < 100 &&
-					e.message.indexOf('totalNeededAmount') > -1
-				) {
+				if (retries < 100 && e.message.includes('totalNeededAmount')) {
 					amount -= 0.000005;
 					return createBitcoreTransaction(retries + 1);
 				}
