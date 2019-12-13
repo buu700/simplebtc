@@ -2,10 +2,10 @@
 	"name": "simplebtc",
 	"version": "2.0.5",
 	"description": "High-level Bitcoin library and command line tool",
-	"main": "simplebtc.js",
+	"main": "dist/simplebtc.js",
 	"types": "simplebtc.d.ts",
 	"scripts": {
-		"build": "make",
+		"build": "npx babel simplebtc.js -o dist/simplebtc.js --presets=@babel/preset-env && webpack --mode none --output-library-target var --output-library simplebtc dist/simplebtc.js -o dist/simplebtc.global.js && terser dist/simplebtc.js -cmo dist/simplebtc.js && terser dist/simplebtc.global.js -cmo dist/simplebtc.global.js",
 		"test": "echo \"Error: no test specified\" ; exit 1",
 		"setUpBashCompletion": "mkdir -p /etc/bash_completion.d/ > /dev/null 2>&1 ; bash -c \"echo 'complete -W \\\"address balance history stream send\\\" simplebtc' > /etc/bash_completion.d/simplebtc\" > /dev/null 2>&1 ; exit 0"
 	},
@@ -49,7 +49,7 @@
 	},
 	"husky": {
 		"hooks": {
-			"pre-commit": "npx cyph-pretty-quick --staged --pattern '*.{css,html,js,json,scss,ts,tsx}' ; sed -i 's|  {| {|g' *.js ; git add *.js"
+			"pre-commit": "npx cyph-pretty-quick --staged --pattern '*.{css,html,js,json,scss,ts,tsx}' && sed -i 's|  {| {|g' *.js && git add *.js"
 		}
 	},
 	"prettier": {
