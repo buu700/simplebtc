@@ -460,11 +460,11 @@ Wallet.prototype.watchTransactionHistory = function (
 };
 
 const simplebtc = {
-	getExchangeRates: getExchangeRates,
+	getExchangeRates,
 	minimumTransactionAmount:
 		BitcoreTransaction.DUST_AMOUNT / satoshiConversion,
 	transactionFee: transactionFee / satoshiConversion,
-	Wallet: Wallet
+	Wallet
 };
 
 simplebtc.simplebtc = simplebtc;
