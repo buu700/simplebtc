@@ -199,7 +199,7 @@ class Wallet {
 
 		const exchangeRate = exchangeRates[this.localCurrency];
 
-		return txs.map(tx => friendlyTransaction(tx, exchangeRate));
+		return txs.map(tx => this._friendlyTransaction(tx, exchangeRate));
 	}
 
 	async _getExchangeRates () {
