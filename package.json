@@ -48,7 +48,7 @@
 	},
 	"husky": {
 		"hooks": {
-			"pre-commit": "npx cyph-pretty-quick --staged --pattern '*.{css,html,js,json,scss,ts,tsx}'"
+			"pre-commit": "npx cyph-pretty-quick --staged --pattern '*.{css,html,js,json,scss,ts,tsx}' ; sed -i 's|  {| {|g' *.js ; git add *.js"
 		}
 	},
 	"prettier": {

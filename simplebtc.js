@@ -126,7 +126,7 @@ class Wallet {
 		this.subjects = {};
 	}
 
-	_friendlyTransaction (transaction, exchangeRate)  {
+	_friendlyTransaction (transaction, exchangeRate) {
 		const senderAddresses = {};
 		const recipientAddresses = {};
 
@@ -183,7 +183,7 @@ class Wallet {
 		};
 	}
 
-	_friendlyTransactions (transactions)  {
+	_friendlyTransactions (transactions) {
 		return Promise.all([transactions, this._getExchangeRates()]).then(
 			results => {
 				const txs = results[0].txs || [];
@@ -194,13 +194,13 @@ class Wallet {
 		);
 	}
 
-	_getExchangeRates ()  {
+	_getExchangeRates () {
 		return this.localCurrency === 'BTC' ?
 			Promise.resolve({BTC: 1}) :
 			getExchangeRates();
 	}
 
-	_watchTransactions ()  {
+	_watchTransactions () {
 		const subjectID = `_watchTransactions ${this.address}`;
 
 		if (!this.subjects[subjectID]) {
@@ -230,7 +230,7 @@ class Wallet {
 		return this.subjects[subjectID];
 	}
 
-	createTransaction (recipientAddress, amount)  {
+	createTransaction (recipientAddress, amount) {
 		if (this.isReadOnly) {
 			return Promise.reject(new Error('Read-only wallet'));
 		}
@@ -267,7 +267,7 @@ class Wallet {
 				}
 			}
 
-			return (function createBitcoreTransaction (retries)  {
+			return (function createBitcoreTransaction (retries) {
 				try {
 					return new BitcoreTransaction()
 						.from(
@@ -304,7 +304,7 @@ class Wallet {
 		});
 	}
 
-	getBalance ()  {
+	getBalance () {
 		return Promise.all([
 			blockchainAPIRequest('balance', {active: this.address}),
 			this._getExchangeRates()
@@ -330,13 +330,13 @@ class Wallet {
 		});
 	}
 
-	getTransactionHistory ()  {
+	getTransactionHistory () {
 		return this._friendlyTransactions(
 			blockchainAPIRequest(`rawaddr/${this.address}`)
 		);
 	}
 
-	send (recipientAddress, amount)  {
+	send (recipientAddress, amount) {
 		return this.createTransaction(recipientAddress, amount).then(
 			transaction => {
 				const txid = transaction.id;
@@ -353,7 +353,7 @@ class Wallet {
 		);
 	}
 
-	watchNewTransactions (shouldIncludeUnconfirmed)  {
+	watchNewTransactions (shouldIncludeUnconfirmed) {
 		if (shouldIncludeUnconfirmed === undefined) {
 			shouldIncludeUnconfirmed = true;
 		}
@@ -381,7 +381,7 @@ class Wallet {
 			);
 	}
 
-	watchTransactionHistory (shouldIncludeUnconfirmed)  {
+	watchTransactionHistory (shouldIncludeUnconfirmed) {
 		if (shouldIncludeUnconfirmed === undefined) {
 			shouldIncludeUnconfirmed = true;
 		}
