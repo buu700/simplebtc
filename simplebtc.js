@@ -70,9 +70,7 @@ const transactionFee = 5430;
 const blockchainApiURL = 'https://blockchain.info/';
 const blockchainWebSocketURL = 'wss://ws.blockchain.info/inv';
 
-function blockchainAPI (url, params)  {
-	params = params || {};
-
+function blockchainAPI (url, params = {})  {
 	if (params.cors !== false) {
 		params.cors = true;
 	}
@@ -153,9 +151,7 @@ function friendlyTransaction (_this, transaction, exchangeRate)  {
 	};
 }
 
-const Wallet = function (options)  {
-	options = options || {};
-
+const Wallet = function (options = {})  {
 	if (options instanceof Wallet) {
 		this.address = options.address;
 		this.isReadOnly = options.isReadOnly;
