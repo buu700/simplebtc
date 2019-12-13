@@ -122,9 +122,7 @@ function friendlyTransaction (_this, transaction, exchangeRate)  {
 
 	transactionData.amount = transactionData.valueOutLocal;
 
-	for (let i = 0; i < transaction.inputs.length; ++i) {
-		const vin = transaction.inputs[i].prev_out;
-
+	for (const vin of transaction.inputs.map(o => o.prev_out)) {
 		transactionData.wasSentByMe =
 			transactionData.wasSentByMe || vin.addr === _this.address;
 
@@ -133,9 +131,7 @@ function friendlyTransaction (_this, transaction, exchangeRate)  {
 		senderAddresses[vin.addr] = true;
 	}
 
-	for (let i = 0; i < transaction.out.length; ++i) {
-		const vout = transaction.out[i];
-
+	for (const vout of transaction.out) {
 		vout.valueLocal = vout.value * exchangeRate;
 
 		if (vout.addr) {
@@ -292,8 +288,7 @@ Wallet.prototype.createTransaction = function (recipientAddress, amount)  {
 			throw new Error('Insufficient funds');
 		}
 
-		for (let i = 0; i < utxos.length; ++i) {
-			const utxo = utxos[i];
+		for (const utxo of utxos) {
 			if (
 				_this.originatingTransactions[utxo.txid] &&
 				!utxo.confirmations
