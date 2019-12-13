@@ -21,7 +21,7 @@ const fetch =
 
 const locks = {};
 
-function lock (id, f)  {
+const lock = (id, f) => {
 	if (!locks[id]) {
 		locks[id] = Promise.resolve();
 	}
@@ -29,9 +29,9 @@ function lock (id, f)  {
 	locks[id] = locks[id].catch(() => {}).then(() => f());
 
 	return locks[id];
-}
+};
 
-function request (url, opts)  {
+const request = (url, opts) => {
 	let retries = 0;
 
 	return lock('request', () => fetch(url, opts))
@@ -54,7 +54,7 @@ function request (url, opts)  {
 				setTimeout(resolve, 250);
 			}).then(() => request(url, opts));
 		});
-}
+};
 
 const satoshiConversion = 100000000;
 const transactionFee = 5430;
@@ -62,7 +62,7 @@ const transactionFee = 5430;
 const blockchainApiURL = 'https://blockchain.info/';
 const blockchainWebSocketURL = 'wss://ws.blockchain.info/inv';
 
-function blockchainAPI (url, params = {})  {
+const blockchainAPI = (url, params = {}) => {
 	if (params.cors !== false) {
 		params.cors = true;
 	}
@@ -70,13 +70,13 @@ function blockchainAPI (url, params = {})  {
 	return `${blockchainApiURL + url}?${Object.keys(params)
 		.map(k => `${k}=${params[k]}`)
 		.join('&')}`;
-}
+};
 
-function blockchainAPIRequest (url, params)  {
+const blockchainAPIRequest = (url, params) => {
 	return request(blockchainAPI(url, params)).then(o => o.json());
-}
+};
 
-function getExchangeRates ()  {
+const getExchangeRates = () => {
 	return blockchainAPIRequest('ticker').then(o => {
 		for (const k in o) {
 			o[k] = o[k].last;
@@ -86,62 +86,7 @@ function getExchangeRates ()  {
 
 		return o;
 	});
-}
-
-function friendlyTransaction (_this, transaction, exchangeRate)  {
-	const senderAddresses = {};
-	const recipientAddresses = {};
-
-	const valueIn = transaction.inputs
-		.map(o => o.prev_out.value)
-		.reduce((a, b) => a + b);
-
-	const valueOut = transaction.out.map(o => o.value).reduce((a, b) => a + b);
-
-	const transactionData = {
-		amount: undefined,
-		valueInLocal: valueIn * exchangeRate,
-		valueOutLocal: valueOut * exchangeRate,
-		wasSentByMe: false
-	};
-
-	transactionData.amount = transactionData.valueOutLocal;
-
-	for (const vin of transaction.inputs.map(o => o.prev_out)) {
-		transactionData.wasSentByMe =
-			transactionData.wasSentByMe || vin.addr === _this.address;
-
-		vin.valueLocal = vin.value * exchangeRate;
-
-		senderAddresses[vin.addr] = true;
-	}
-
-	for (const vout of transaction.out) {
-		vout.valueLocal = vout.value * exchangeRate;
-
-		if (vout.addr) {
-			if (senderAddresses[vout.addr]) {
-				transactionData.amount -= vout.valueLocal;
-			}
-			else {
-				recipientAddresses[vout.addr] = true;
-			}
-		}
-	}
-
-	return {
-		amount: parseFloat(
-			(transactionData.amount / satoshiConversion).toFixed(8)
-		),
-		baseTransaction: transaction,
-		id: transaction.txid,
-		isConfirmed: (transaction.confirmations || 0) >= 6,
-		recipients: Object.keys(recipientAddresses),
-		senders: Object.keys(senderAddresses),
-		timestamp: transaction.time * 1000,
-		wasSentByMe: transactionData.wasSentByMe
-	};
-}
+};
 
 class Wallet {
 	constructor (options = {}) {
@@ -187,6 +132,65 @@ class Wallet {
 			getExchangeRates();
 	}
 
+	_friendlyTransaction (transaction, exchangeRate)  {
+		const _this = this;
+
+		const senderAddresses = {};
+		const recipientAddresses = {};
+
+		const valueIn = transaction.inputs
+			.map(o => o.prev_out.value)
+			.reduce((a, b) => a + b);
+
+		const valueOut = transaction.out
+			.map(o => o.value)
+			.reduce((a, b) => a + b);
+
+		const transactionData = {
+			amount: undefined,
+			valueInLocal: valueIn * exchangeRate,
+			valueOutLocal: valueOut * exchangeRate,
+			wasSentByMe: false
+		};
+
+		transactionData.amount = transactionData.valueOutLocal;
+
+		for (const vin of transaction.inputs.map(o => o.prev_out)) {
+			transactionData.wasSentByMe =
+				transactionData.wasSentByMe || vin.addr === _this.address;
+
+			vin.valueLocal = vin.value * exchangeRate;
+
+			senderAddresses[vin.addr] = true;
+		}
+
+		for (const vout of transaction.out) {
+			vout.valueLocal = vout.value * exchangeRate;
+
+			if (vout.addr) {
+				if (senderAddresses[vout.addr]) {
+					transactionData.amount -= vout.valueLocal;
+				}
+				else {
+					recipientAddresses[vout.addr] = true;
+				}
+			}
+		}
+
+		return {
+			amount: parseFloat(
+				(transactionData.amount / satoshiConversion).toFixed(8)
+			),
+			baseTransaction: transaction,
+			id: transaction.txid,
+			isConfirmed: (transaction.confirmations || 0) >= 6,
+			recipients: Object.keys(recipientAddresses),
+			senders: Object.keys(senderAddresses),
+			timestamp: transaction.time * 1000,
+			wasSentByMe: transactionData.wasSentByMe
+		};
+	}
+
 	_friendlyTransactions (transactions)  {
 		const _this = this;
 
@@ -195,9 +199,7 @@ class Wallet {
 				const txs = results[0].txs || [];
 				const exchangeRate = results[1][_this.localCurrency];
 
-				return txs.map(tx =>
-					friendlyTransaction(_this, tx, exchangeRate)
-				);
+				return txs.map(tx => friendlyTransaction(tx, exchangeRate));
 			}
 		);
 	}
