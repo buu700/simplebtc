@@ -1,6 +1,6 @@
 {
 	"name": "simplebtc",
-	"version": "2.0.5",
+	"version": "2.1.0",
 	"description": "High-level Bitcoin library and command line tool",
 	"main": "dist/simplebtc.js",
 	"types": "simplebtc.d.ts",
