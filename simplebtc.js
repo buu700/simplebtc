@@ -207,7 +207,8 @@ class Wallet {
 		const subjectID = `_watchTransactions ${this.address}`;
 
 		if (!this.subjects[subjectID]) {
-			this.subjects[subjectID] = new Subject();
+			const subject = new Subject();
+			this.subjects[subjectID] = subject;
 
 			const socket = new WebSocket(blockchainWebSocketURL);
 
@@ -225,7 +226,7 @@ class Wallet {
 				catch (_) {}
 
 				if (txid) {
-					this.subjects[subjectID].next(JSON.parse(msg.data).x.hash);
+					subject.next(txid);
 				}
 			};
 		}
@@ -351,20 +352,20 @@ class Wallet {
 		}).then(async o => o.text());
 	}
 
-	watchNewTransactions (shouldIncludeUnconfirmed) {
-		if (shouldIncludeUnconfirmed === undefined) {
-			shouldIncludeUnconfirmed = true;
-		}
-
+	watchNewTransactions (shouldIncludeUnconfirmed = true) {
 		const subjectID = `watchNewTransactions ${this.address}`;
 
 		if (!this.subjects[subjectID]) {
 			this.subjects[subjectID] = this._watchTransactions().pipe(
 				mergeMap(async txid =>
-					lock(subjectID, async () =>
-						this._friendlyTransactions(
-							blockchainAPIRequest(`rawtx/${txid}`).then(o => [o])
-						).then(newTransaction => newTransaction[0])
+					lock(
+						subjectID,
+						async () =>
+							(await this._friendlyTransactions(
+								blockchainAPIRequest(
+									`rawtx/${txid}`
+								).then(o => [o])
+							))[0]
 					)
 				)
 			);
@@ -379,18 +380,15 @@ class Wallet {
 			);
 	}
 
-	watchTransactionHistory (shouldIncludeUnconfirmed) {
-		if (shouldIncludeUnconfirmed === undefined) {
-			shouldIncludeUnconfirmed = true;
-		}
-
+	watchTransactionHistory (shouldIncludeUnconfirmed = true) {
 		const subjectID = `watchTransactionHistory ${this.address}`;
 
 		if (!this.subjects[subjectID]) {
-			this.subjects[subjectID] = new ReplaySubject(1);
+			const subject = new ReplaySubject(1);
+			this.subjects[subjectID] = subject;
 
 			this.getTransactionHistory().then(transactions => {
-				this.subjects[subjectID].next(transactions);
+				subject.next(transactions);
 
 				this._watchTransactions()
 					.pipe(
@@ -400,7 +398,7 @@ class Wallet {
 							)
 						)
 					)
-					.subscribe(this.subjects[subjectID]);
+					.subscribe(subject);
 			});
 		}
 
