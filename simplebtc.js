@@ -35,8 +35,8 @@ function lock (id, f)  {
 	}
 
 	locks[id] = locks[id]
-		.catch(function ()  {})
-		.then(function ()  {
+		.catch(() => {})
+		.then(() => {
 			return f();
 		});
 
@@ -46,10 +46,10 @@ function lock (id, f)  {
 function request (url, opts)  {
 	let retries = 0;
 
-	return lock('request', function ()  {
+	return lock('request', () => {
 		return fetch(url, opts);
 	})
-		.then(function (o)  {
+		.then(o => {
 			if (o.status !== 200) {
 				throw new Error(
 					'Request failure: status ' + o.status.toString()
@@ -58,15 +58,15 @@ function request (url, opts)  {
 
 			return o;
 		})
-		.catch(function (err)  {
+		.catch(err => {
 			if (retries > 10) {
 				throw err;
 			}
 			++retries;
 
-			return new Promise(function (resolve)  {
+			return new Promise(resolve => {
 				setTimeout(resolve, 250);
-			}).then(function ()  {
+			}).then(() => {
 				return request(url, opts);
 			});
 		});
@@ -96,13 +96,13 @@ function blockchainAPI (url, params)  {
 }
 
 function blockchainAPIRequest (url, params)  {
-	return request(blockchainAPI(url, params)).then(function (o)  {
+	return request(blockchainAPI(url, params)).then(o => {
 		return o.json();
 	});
 }
 
 function getExchangeRates ()  {
-	return blockchainAPIRequest('ticker').then(function (o)  {
+	return blockchainAPIRequest('ticker').then(o => {
 		for (const k in o) {
 			o[k] = o[k].last;
 		}
@@ -118,18 +118,18 @@ function friendlyTransaction (_this, transaction, exchangeRate)  {
 	const recipientAddresses = {};
 
 	const valueIn = transaction.inputs
-		.map(function (o)  {
+		.map(o => {
 			return o.prev_out.value;
 		})
-		.reduce(function (a, b)  {
+		.reduce((a, b) => {
 			return a + b;
 		});
 
 	const valueOut = transaction.out
-		.map(function (o)  {
+		.map(o => {
 			return o.value;
 		})
-		.reduce(function (a, b)  {
+		.reduce((a, b) => {
 			return a + b;
 		});
 
@@ -231,11 +231,11 @@ Wallet.prototype._friendlyTransactions = function (transactions)  {
 	const _this = this;
 
 	return Promise.all([transactions, _this._getExchangeRates()]).then(
-		function (results)  {
+		results => {
 			const txs = results[0].txs || [];
 			const exchangeRate = results[1][_this.localCurrency];
 
-			return txs.map(function (tx)  {
+			return txs.map(tx => {
 				return friendlyTransaction(_this, tx, exchangeRate);
 			});
 		}
@@ -252,11 +252,11 @@ Wallet.prototype._watchTransactions = function ()  {
 
 		const socket = new WebSocket(blockchainWebSocketURL);
 
-		socket.onopen = function ()  {
+		socket.onopen = () => {
 			socket.send(JSON.stringify({op: 'addr_sub', addr: _this.address}));
 		};
 
-		socket.onmessage = function (msg)  {
+		socket.onmessage = msg => {
 			let txid;
 			try {
 				txid = JSON.parse(msg.data).x.hash;
@@ -295,17 +295,13 @@ Wallet.prototype.createTransaction = function (recipientAddress, amount)  {
 
 	return Promise.all([
 		_this.getBalance(),
-		blockchainAPIRequest('unspent', {active: _this.address}).catch(
-			function ()  {
-				return {unspent_outputs: []};
-			}
-		)
-	]).then(function (results)  {
+		blockchainAPIRequest('unspent', {active: _this.address}).catch(() => {
+			return {unspent_outputs: []};
+		})
+	]).then(results => {
 		const balance = results[0];
 
-		const utxos = ((results[1] || {}).unspent_outputs || []).map(function (
-			o
-		)  {
+		const utxos = ((results[1] || {}).unspent_outputs || []).map(o => {
 			return {
 				outputIndex: o.tx_output_n,
 				satoshis: o.value,
@@ -334,7 +330,7 @@ Wallet.prototype.createTransaction = function (recipientAddress, amount)  {
 			try {
 				return new BitcoreTransaction()
 					.from(
-						utxos.map(function (utxo)  {
+						utxos.map(utxo => {
 							return new BitcoreTransaction.UnspentOutput(utxo);
 						})
 					)
@@ -349,14 +345,16 @@ Wallet.prototype.createTransaction = function (recipientAddress, amount)  {
 					.change(_this.address)
 					.fee(transactionFee)
 					.sign(_this.key);
-			}  catch (e) {
+			}
+			catch (e) {
 				if (
 					retries < 100 &&
 					e.message.indexOf('totalNeededAmount') > -1
 				) {
 					amount -= 0.000005;
 					return createBitcoreTransaction(retries + 1);
-				}  else {
+				}
+				else {
 					throw e;
 				}
 			}
@@ -370,12 +368,13 @@ Wallet.prototype.getBalance = function ()  {
 	return Promise.all([
 		blockchainAPIRequest('balance', {active: _this.address}),
 		_this._getExchangeRates()
-	]).then(function (results)  {
+	]).then(results => {
 		let balance = 0;
 		try {
 			balance =
 				results[0][_this.address].final_balance / satoshiConversion;
-		}  catch (_) {}
+		}
+		catch (_) {}
 
 		const exchangeRates = results[1];
 
@@ -402,7 +401,7 @@ Wallet.prototype.send = function (recipientAddress, amount)  {
 
 	return _this
 		.createTransaction(recipientAddress, amount)
-		.then(function (transaction)  {
+		.then(transaction => {
 			const txid = transaction.id;
 			_this.originatingTransactions[txid] = true;
 
@@ -412,7 +411,7 @@ Wallet.prototype.send = function (recipientAddress, amount)  {
 			return request(blockchainAPI('pushtx'), {
 				body: formData,
 				method: 'POST'
-			}).then(function (o)  {
+			}).then(o => {
 				return o.text();
 			});
 		});
@@ -429,17 +428,15 @@ Wallet.prototype.watchNewTransactions = function (shouldIncludeUnconfirmed)  {
 
 	if (!_this.subjects[subjectID]) {
 		_this.subjects[subjectID] = _this._watchTransactions().pipe(
-			mergeMap(function (txid)  {
-				return lock(subjectID, function ()  {
+			mergeMap(txid => {
+				return lock(subjectID, () => {
 					return _this
 						._friendlyTransactions(
-							blockchainAPIRequest('rawtx/' + txid).then(
-								function (o)  {
-									return [o];
-								}
-							)
+							blockchainAPIRequest('rawtx/' + txid).then(o => {
+								return [o];
+							})
 						)
-						.then(function (newTransaction)  {
+						.then(newTransaction => {
 							return newTransaction[0];
 						});
 				});
@@ -450,8 +447,8 @@ Wallet.prototype.watchNewTransactions = function (shouldIncludeUnconfirmed)  {
 	return shouldIncludeUnconfirmed ?
 		_this.subjects[subjectID] :
 		_this.subjects[subjectID].pipe(
-			map(function (transactions)  {
-				return transactions.filter(function (transaction)  {
+			map(transactions => {
+				return transactions.filter(transaction => {
 					return transaction.isConfirmed;
 				});
 			})
@@ -472,14 +469,14 @@ Wallet.prototype.watchTransactionHistory = function (
 	if (!_this.subjects[subjectID]) {
 		_this.subjects[subjectID] = new ReplaySubject(1);
 
-		_this.getTransactionHistory().then(function (transactions)  {
+		_this.getTransactionHistory().then(transactions => {
 			_this.subjects[subjectID].next(transactions);
 
 			_this
 				._watchTransactions()
 				.pipe(
-					mergeMap(function ()  {
-						return lock(subjectID, function ()  {
+					mergeMap(() => {
+						return lock(subjectID, () => {
 							return _this.getTransactionHistory();
 						});
 					})
@@ -491,8 +488,8 @@ Wallet.prototype.watchTransactionHistory = function (
 	return shouldIncludeUnconfirmed ?
 		_this.subjects[subjectID] :
 		_this.subjects[subjectID].pipe(
-			map(function (transactions)  {
-				return transactions.filter(function (transaction)  {
+			map(transactions => {
+				return transactions.filter(transaction => {
 					return transaction.isConfirmed;
 				});
 			})
