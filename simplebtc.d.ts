@@ -7,9 +7,6 @@ declare module 'simplebtc' {
 		/** Transaction amount (in local currency). */
 		amount: number;
 
-		/** BitPay Insight transaction object. */
-		baseTransaction: any;
-
 		/** Transaction ID. */
 		id: string;
 
@@ -33,12 +30,6 @@ declare module 'simplebtc' {
 	class Wallet {
 		/** Wallet address. */
 		readonly address: string;
-
-		/**
-		 * Base URL of Insight blockchain explorer API.
-		 * Defaults to "https://insight.bitpay.com/api".
-		 */
-		readonly insightBaseURL: string;
 
 		/** Indicates whether wallet is read-only (i.e. private key is unknown). */
 		readonly isReadOnly: boolean;
@@ -72,17 +63,20 @@ declare module 'simplebtc' {
 		) : Promise<string>;
 
 		/** Watches for new transactions as they occur. */
-		watchNewTransactions () : Observable<Transaction>;
+		watchNewTransactions (
+			shouldIncludeUnconfirmed?: boolean
+		) : Observable<Transaction>;
 
 		/** Watches transaction history. */
-		watchTransactionHistory () : Observable<Transaction[]>;
+		watchTransactionHistory (
+			shouldIncludeUnconfirmed?: boolean
+		) : Observable<Transaction[]>;
 
 		constructor (
 			options?:
 				| Wallet
 				| {
 						address?: string;
-						insightBaseURL?: string;
 						key?: Uint8Array | string;
 						localCurrency?: string;
 				  }
