@@ -114,7 +114,6 @@ class Wallet {
 					new BitcorePrivateKey(options.key, 'livenet') :
 					BitcorePrivateKey.fromObject({
 						bn: options.key,
-						compressed: true,
 						network: 'livenet'
 					});
 		}
