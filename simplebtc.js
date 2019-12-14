@@ -20,24 +20,26 @@ const fetch =
 		eval('require')('node-fetch') :
 		require('whatwg-fetch');
 
-const locks = {};
-
-const lock = async (id, f) => {
-	if (!locks[id]) {
-		locks[id] = Promise.resolve();
-	}
-
-	locks[id] = locks[id].catch(() => {}).then(async () => f());
-
-	return locks[id];
-};
-
 const sleep = async (ms = 250) =>
 	new Promise(resolve => {
 		setTimeout(resolve, ms);
 	});
 
-const request = async (url, opts, maxRetries = 10, retries = 0) => {
+const locks = {};
+
+const lock = async (id, f, delay = 0) => {
+	if (!locks[id]) {
+		locks[id] = Promise.resolve();
+	}
+
+	const promise = locks[id].then(async () => f());
+
+	locks[id] = promise.catch(() => {}).then(async () => sleep(delay));
+
+	return promise;
+};
+
+const request = async (url, opts, delay = 0, maxRetries = 2, retries = 0) => {
 	try {
 		const o = await lock('request', async () => fetch(url, opts));
 
@@ -52,8 +54,8 @@ const request = async (url, opts, maxRetries = 10, retries = 0) => {
 			throw err;
 		}
 
-		await sleep(1000);
-		return request(url, opts, maxRetries, retries + 1);
+		await sleep(delay + 1000);
+		return request(url, opts, delay, maxRetries, retries + 1);
 	}
 };
 
@@ -74,7 +76,9 @@ const blockchainAPI = (url, params = {}) => {
 };
 
 const blockchainAPIRequest = async (url, params) => {
-	return request(blockchainAPI(url, params)).then(async o => o.json());
+	return request(blockchainAPI(url, params), undefined, 10000).then(async o =>
+		o.json()
+	);
 };
 
 const getExchangeRates = async () => {
