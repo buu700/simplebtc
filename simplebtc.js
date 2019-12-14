@@ -113,7 +113,13 @@ class Wallet {
 				typeof options.key === 'string' ?
 					new BitcorePrivateKey(options.key, 'livenet') :
 					BitcorePrivateKey.fromObject({
-						bn: options.key,
+						bn:
+							options.key instanceof Uint8Array ?
+								options.key :
+								options.key.buffer,
+						compressed:
+							!(options.key instanceof Uint8Array) &&
+							!!options.key.compressed,
 						network: 'livenet'
 					});
 		}
