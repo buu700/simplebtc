@@ -14,7 +14,7 @@ const args = process.argv.slice(2);
 
 const simplebtcrcPath = require('path').join(os.homedir(), '.simplebtcrc');
 
-const options = {};
+let options = {};
 
 const formatTransaction = tx => {
 	const o = {...tx};
@@ -25,13 +25,19 @@ const formatTransaction = tx => {
 const dothemove = async () => {
 	const wallet = new Wallet(options);
 
-	if (!(options.wif || options.address)) {
+	if (
+		!(
+			(typeof options.address === 'string' &&
+				options.address.length > 0) ||
+			(typeof options.key === 'string' && options.key.length > 0)
+		)
+	) {
 		console.log(
 			'\nNew wallet created with address ' + wallet.address + '\n'
 		);
 
 		if (wallet.key) {
-			options.wif = wallet.key.toWIF();
+			options.key = wallet.key.toWIF();
 		}
 		else {
 			options.address = wallet.address;
@@ -108,21 +114,24 @@ try {
 }
 catch (_) {}
 
-if (options.wif || options.address) {
+if (
+	(typeof options.address === 'string' && options.address.length > 0) ||
+	(typeof options.key === 'string' && options.key.length > 0)
+) {
 	dothemove();
 }
 else {
 	readLine.question('Local currency code (e.g. USD): ', localCurrency => {
 		options.localCurrency = localCurrency.trim();
 
-		readLine.question('Bitcoin wallet WIF (optional): ', wif => {
-			options.wif = wif.trim();
+		readLine.question('Bitcoin wallet WIF (optional): ', key => {
+			options.key = key.trim();
 
-			if (options.wif) {
+			if (options.key.length > 0) {
 				dothemove();
 			}
 			else {
-				delete options.wif;
+				delete options.key;
 
 				readLine.question(
 					'Bitcoin wallet address (optional, read-only): ',
