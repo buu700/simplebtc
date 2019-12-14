@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
+const os = require('os');
 const {Wallet} = require('./simplebtc');
 
 const readLine = require('readline').createInterface({
@@ -11,10 +12,7 @@ const readLine = require('readline').createInterface({
 
 const args = process.argv.slice(2);
 
-const simplebtcrcPath = require('path').join(
-	process.env[process.platform == 'win32' ? 'USERPROFILE' : 'HOME'],
-	'.simplebtcrc'
-);
+const simplebtcrcPath = require('path').join(os.homedir(), '.simplebtcrc');
 
 const options = {};
 
