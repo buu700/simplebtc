@@ -108,26 +108,25 @@ class Wallet {
 
 		this.localCurrency = options.localCurrency || 'BTC';
 
-		if (options.key) {
-			this.key =
-				typeof options.key === 'string' ?
-					new BitcorePrivateKey(options.key, 'livenet') :
-					BitcorePrivateKey.fromObject({
-						bn:
-							options.key instanceof Uint8Array ?
-								options.key :
-								options.key.buffer,
-						compressed:
-							!(options.key instanceof Uint8Array) &&
-							!!options.key.compressed,
-						network: 'livenet'
-					});
+		const key =
+			typeof options.key === 'string' ?
+				new BitcorePrivateKey(options.key, 'livenet').toBuffer() :
+			options.key instanceof Uint8Array ?
+				options.key :
+				undefined;
+
+		if (key) {
+			this.key = BitcorePrivateKey.fromObject({
+				bn: key,
+				compressed: !options.uncompressedPublicKey,
+				network: 'livenet'
+			});
 		}
 		else if (!options.address) {
 			this.key = new BitcorePrivateKey(undefined, 'livenet');
 		}
 
-		this.isReadOnly = !this.key;
+		this.isReadOnly = this.key === undefined;
 		this.address = this.isReadOnly ?
 			options.address :
 			this.key.toAddress().toString();

@@ -77,11 +77,9 @@ declare module 'simplebtc' {
 				| Wallet
 				| {
 						address?: string;
-						key?:
-							| Uint8Array
-							| string
-							| {buffer: Uint8Array; compressed: boolean};
+						key?: Uint8Array | string;
 						localCurrency?: string;
+						uncompressedPublicKey?: boolean;
 				  }
 		);
 	}
