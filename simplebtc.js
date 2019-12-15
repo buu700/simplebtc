@@ -115,7 +115,7 @@ class Wallet {
 				options.key :
 				undefined;
 
-		if (key) {
+		if (key !== undefined) {
 			this.key = BitcorePrivateKey.fromObject({
 				bn: key,
 				compressed: !options.uncompressedPublicKey,
