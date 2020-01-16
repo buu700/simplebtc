@@ -92,4 +92,7 @@ declare module 'simplebtc' {
 
 	/** Returns exchange rates between various currencies and Bitcoin. */
 	const getExchangeRates: () => Promise<{[currencyCode: string]: number}>;
+
+	/** Sets Blockchain.com API key. */
+	const setBlockchainAPIKey: (apiKey: string) => void;
 }

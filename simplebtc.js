@@ -62,7 +62,8 @@ const request = async (url, opts, delay = 0, maxRetries = 2, retries = 0) => {
 const satoshiConversion = 100000000;
 const transactionFee = 5430;
 
-const blockchainApiURL = 'https://blockchain.info/';
+let blockchainAPIKey = undefined;
+const blockchainAPIURL = 'https://blockchain.info/';
 const blockchainWebSocketURL = 'wss://ws.blockchain.info/inv';
 
 const blockchainAPI = (url, params = {}) => {
@@ -70,15 +71,21 @@ const blockchainAPI = (url, params = {}) => {
 		params.cors = true;
 	}
 
-	return `${blockchainApiURL + url}?${Object.keys(params)
+	if (blockchainAPIKey) {
+		params.key = blockchainAPIKey;
+	}
+
+	return `${blockchainAPIURL + url}?${Object.keys(params)
 		.map(k => `${k}=${params[k]}`)
 		.join('&')}`;
 };
 
 const blockchainAPIRequest = async (url, params) => {
-	return request(blockchainAPI(url, params), undefined, 10000).then(async o =>
-		o.json()
-	);
+	return request(
+		blockchainAPI(url, params),
+		undefined,
+		blockchainAPIKey ? 0 : 10000
+	).then(async o => o.json());
 };
 
 const getExchangeRates = async () => {
@@ -93,8 +100,14 @@ const getExchangeRates = async () => {
 	return o;
 };
 
+const setBlockchainAPIKey = apiKey => {
+	blockchainAPIKey = apiKey;
+};
+
 class Wallet {
 	constructor (options = {}) {
+		this.apiKey = options.apiKey;
+
 		if (options instanceof Wallet) {
 			this.address = options.address;
 			this.isReadOnly = options.isReadOnly;
@@ -428,6 +441,7 @@ const simplebtc = {
 	getExchangeRates,
 	minimumTransactionAmount:
 		BitcoreTransaction.DUST_AMOUNT / satoshiConversion,
+	setBlockchainAPIKey,
 	transactionFee: transactionFee / satoshiConversion,
 	Wallet
 };
