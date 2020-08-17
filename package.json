@@ -1,6 +1,6 @@
 {
 	"name": "simplebtc",
-	"version": "3.1.0",
+	"version": "4.0.0",
 	"description": "High-level Bitcoin library and command line tool",
 	"main": "dist/simplebtc.js",
 	"types": "simplebtc.d.ts",
@@ -15,8 +15,11 @@
 	},
 	"keywords": [
 		"bitcoin",
+		"bitcoin cash",
+		"bch",
 		"btc",
 		"blockchain",
+		"cash",
 		"money",
 		"client",
 		"simple"
@@ -29,6 +32,7 @@
 	"dependencies": {
 		"@types/bitcore-lib": "0",
 		"bitcore-lib": "^0",
+		"bitcore-lib-cash": "^0",
 		"form-data": "*",
 		"node-fetch": "*",
 		"rxjs": "^6",

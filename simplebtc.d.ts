@@ -31,11 +31,15 @@ declare module 'simplebtc' {
 		/** Wallet address. */
 		readonly address: string;
 
+		/**
+		 * Indicates whether this is a Bitcoin Cash wallet.
+		 * For compatibility, the API will still use the string
+		 * and property name "BTC" in either case.
+		 */
+		readonly bitcoinCash: boolean;
+
 		/** Indicates whether wallet is read-only (i.e. private key is unknown). */
 		readonly isReadOnly: boolean;
-
-		/** Local currency code (BTC by default). */
-		readonly localCurrency: string;
 
 		/** Wallet private key. */
 		readonly key: PrivateKey & {
@@ -43,7 +47,16 @@ declare module 'simplebtc' {
 			toWIF: () => string;
 		};
 
-		/** Gets balance (in BTC and local currency). */
+		/** Local currency code (BTC by default). */
+		readonly localCurrency: string;
+
+		/** Static fee for all transactions (in BTC/BCH). */
+		readonly transactionFee: number;
+
+		/** Static fee for all transactions (in satoshis). */
+		readonly transactionFeeSatoshi: number;
+
+		/** Gets balance in BTC (or BCH, if applicable) and local currency. */
 		getBalance () : Promise<{btc: number; local: number}>;
 
 		/** Gets transaction history, sorted by timestamp in descending order. */
@@ -62,12 +75,18 @@ declare module 'simplebtc' {
 			amount: number
 		) : Promise<string>;
 
-		/** Watches for new transactions as they occur. */
+		/**
+		 * Watches for new transactions as they occur.
+		 * NOTE: Currently unsupported with Bitcoin Cash (never emits).
+		 */
 		watchNewTransactions (
 			shouldIncludeUnconfirmed?: boolean
 		) : Observable<Transaction>;
 
-		/** Watches transaction history. */
+		/**
+		 * Watches transaction history.
+		 * NOTE: Currently unsupported with Bitcoin Cash (only emits once).
+		 */
 		watchTransactionHistory (
 			shouldIncludeUnconfirmed?: boolean
 		) : Observable<Transaction[]>;
@@ -77,6 +96,7 @@ declare module 'simplebtc' {
 				| Wallet
 				| {
 						address?: string;
+						bitcoinCash?: boolean;
 						key?: Uint8Array | string;
 						localCurrency?: string;
 						uncompressedPublicKey?: boolean;
@@ -87,11 +107,16 @@ declare module 'simplebtc' {
 	/** Minimum ("dust") transaction amount. */
 	const minimumTransactionAmount: number;
 
-	/** Static fee for all transactions. */
-	const transactionFee: number;
+	/** Static fees for all transactions (in BTC/BCH). */
+	const transactionFees: {bitcoin: number; bitcoinCash: number};
 
-	/** Returns exchange rates between various currencies and Bitcoin. */
-	const getExchangeRates: () => Promise<{[currencyCode: string]: number}>;
+	/** Static fees for all transactions (in satoshis). */
+	const transactionFeesSatoshi: {bitcoin: number; bitcoinCash: number};
+
+	/** Returns exchange rates between various currencies and Bitcoin or Bitcoin Cash. */
+	const getExchangeRates: (
+		bitcoinCash?: boolean
+	) => Promise<{[currencyCode: string]: number}>;
 
 	/** Sets Blockchain.com API key. */
 	const setBlockchainAPIKey: (apiKey: string) => void;

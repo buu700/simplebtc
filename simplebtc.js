@@ -6,9 +6,19 @@ const isNode =
 
 const rootScope = isNode ? global : self;
 
-const {isValid: addressIsValid} = require('bitcore-lib/lib/address');
-const BitcorePrivateKey = require('bitcore-lib/lib/privatekey');
-const BitcoreTransaction = require('bitcore-lib/lib/transaction');
+const bitcore = {
+	bitcoin: {
+		address: require('bitcore-lib/lib/address'),
+		BitcorePrivateKey: require('bitcore-lib/lib/privatekey'),
+		BitcoreTransaction: require('bitcore-lib/lib/transaction')
+	},
+	bitcoinCash: {
+		address: require('bitcore-lib-cash/lib/address'),
+		BitcorePrivateKey: require('bitcore-lib-cash/lib/privatekey'),
+		BitcoreTransaction: require('bitcore-lib-cash/lib/transaction')
+	}
+};
+
 const FormData = require('form-data');
 const {ReplaySubject, Subject} = require('rxjs');
 const {map, mergeMap} = require('rxjs/operators');
@@ -60,13 +70,21 @@ const request = async (url, opts, delay = 0, maxRetries = 2, retries = 0) => {
 };
 
 const satoshiConversion = 100000000;
-const transactionFee = 5430;
+const transactionFeesSatoshi = {
+	bitcoin: 12000,
+	bitcoinCash: 500
+};
+const transactionFees = {
+	bitcoin: transactionFeesSatoshi.bitcoin / satoshiConversion,
+	bitcoinCash: transactionFeesSatoshi.bitcoinCash / satoshiConversion
+};
 
 let blockchainAPIKey = undefined;
-const blockchainAPIURL = 'https://blockchain.info/';
+const blockchainAPIURL = 'https://api.blockchain.info/haskoin-store/';
 const blockchainWebSocketURL = 'wss://ws.blockchain.info/inv';
 
-const blockchainAPI = (url, params = {}) => {
+const blockchainAPI = (bitcoinCash, url, _PARAMS) => {
+	/*
 	if (params.cors !== false) {
 		params.cors = true;
 	}
@@ -74,25 +92,39 @@ const blockchainAPI = (url, params = {}) => {
 	if (blockchainAPIKey) {
 		params.key = blockchainAPIKey;
 	}
+	*/
 
-	return `${blockchainAPIURL + url}?${Object.keys(params)
-		.map(k => `${k}=${params[k]}`)
-		.join('&')}`;
+	const baseURL = blockchainAPIURL + (bitcoinCash ? 'bch/' : 'btc/');
+
+	return baseURL + url;
 };
 
-const blockchainAPIRequest = async (url, params) => {
+const blockchainAPIRequest = async (bitcoinCash, url, params) => {
 	return request(
-		blockchainAPI(url, params),
+		blockchainAPI(bitcoinCash, url, params),
 		undefined,
-		blockchainAPIKey ? 0 : 10000
+		/* blockchainAPIKey ? 0 : 10000 */
+		10000
 	).then(async o => o.json());
 };
 
-const getExchangeRates = async () => {
-	const o = await blockchainAPIRequest('ticker');
+const getExchangeRates = async bitcoinCash => {
+	const [o, conversionRate] = await Promise.all([
+		request('https://blockchain.info/ticker').then(async o => o.json()),
+		bitcoinCash ?
+			(async () =>
+				(await request(
+					'https://api.coingecko.com/api/v3/exchange_rates'
+				).then(o => o.json())).rates.bch.value)() :
+			1
+	]);
 
-	for (const k in o) {
+	for (const k of Object.keys(o)) {
 		o[k] = o[k].last;
+
+		if (bitcoinCash) {
+			o[k] = parseFloat((o[k] / conversionRate).toFixed(2));
+		}
 	}
 
 	o.BTC = 1;
@@ -107,6 +139,16 @@ const setBlockchainAPIKey = apiKey => {
 class Wallet {
 	constructor (options = {}) {
 		this.apiKey = options.apiKey;
+		this.bitcoinCash = options.bitcoinCash === true;
+
+		this.bitcore = this.bitcoinCash ? bitcore.bitcoinCash : bitcore.bitcoin;
+
+		this.transactionFee = this.bitcoinCash ?
+			transactionFees.bitcoinCash :
+			transactionFees.bitcoin;
+		this.transactionFeeSatoshi = this.bitcoinCash ?
+			transactionFeesSatoshi.bitcoinCash :
+			transactionFeesSatoshi.bitcoin;
 
 		if (options instanceof Wallet) {
 			this.address = options.address;
@@ -123,20 +165,23 @@ class Wallet {
 
 		const key =
 			typeof options.key === 'string' ?
-				new BitcorePrivateKey(options.key, 'livenet').toBuffer() :
+				new this.bitcore.BitcorePrivateKey(
+					options.key,
+					'livenet'
+				).toBuffer() :
 			options.key instanceof Uint8Array ?
 				options.key :
 				undefined;
 
 		if (key !== undefined) {
-			this.key = BitcorePrivateKey.fromObject({
+			this.key = this.bitcore.BitcorePrivateKey.fromObject({
 				bn: key,
 				compressed: !options.uncompressedPublicKey,
 				network: 'livenet'
 			});
 		}
 		else if (!options.address) {
-			this.key = new BitcorePrivateKey(undefined, 'livenet');
+			this.key = new this.bitcore.BitcorePrivateKey(undefined, 'livenet');
 		}
 
 		this.isReadOnly = this.key === undefined;
@@ -147,8 +192,21 @@ class Wallet {
 		this.originatingTransactions = {};
 		this.subjects = {};
 
-		if (!addressIsValid(this.address)) {
-			throw new Error(`Invalid Address: ${this.address}.`);
+		if (!this.bitcore.address.isValid(this.address)) {
+			if (
+				this.bitcoinCash &&
+				bitcore.bitcoin.address.isValid(this.address)
+			) {
+				this.address = bitcore.bitcoinCash.address
+					.fromPublicKeyHash(
+						bitcore.bitcoin.address.fromString(this.address)
+							.hashBuffer
+					)
+					.toString();
+			}
+			else {
+				throw new Error(`Invalid Address: ${this.address}.`);
+			}
 		}
 	}
 
@@ -157,12 +215,12 @@ class Wallet {
 		const recipientAddresses = {};
 
 		const valueIn = transaction.inputs
-			.map(o => o.prev_out.value)
-			.reduce((a, b) => a + b);
-
-		const valueOut = transaction.out
 			.map(o => o.value)
-			.reduce((a, b) => a + b);
+			.reduce((a, b) => a + b, 0);
+
+		const valueOut = transaction.outputs
+			.map(o => o.value)
+			.reduce((a, b) => a + b, 0);
 
 		const transactionData = {
 			amount: undefined,
@@ -173,24 +231,24 @@ class Wallet {
 
 		transactionData.amount = transactionData.valueOutLocal;
 
-		for (const vin of transaction.inputs.map(o => o.prev_out)) {
+		for (const vin of transaction.inputs) {
 			transactionData.wasSentByMe =
-				transactionData.wasSentByMe || vin.addr === this.address;
+				transactionData.wasSentByMe || vin.address === this.address;
 
 			vin.valueLocal = vin.value * exchangeRate;
 
-			senderAddresses[vin.addr] = true;
+			senderAddresses[vin.address] = true;
 		}
 
-		for (const vout of transaction.out) {
+		for (const vout of transaction.outputs) {
 			vout.valueLocal = vout.value * exchangeRate;
 
-			if (vout.addr) {
-				if (senderAddresses[vout.addr]) {
+			if (vout.address) {
+				if (senderAddresses[vout.address]) {
 					transactionData.amount -= vout.valueLocal;
 				}
 				else {
-					recipientAddresses[vout.addr] = true;
+					recipientAddresses[vout.address] = true;
 				}
 			}
 		}
@@ -201,7 +259,7 @@ class Wallet {
 			),
 			baseTransaction: transaction,
 			id: transaction.txid,
-			isConfirmed: (transaction.confirmations || 0) >= 6,
+			isConfirmed: !transaction.rbf,
 			recipients: Object.keys(recipientAddresses),
 			senders: Object.keys(senderAddresses),
 			timestamp: transaction.time * 1000,
@@ -210,18 +268,22 @@ class Wallet {
 	}
 
 	async _friendlyTransactions (transactions) {
-		const [{txs = []}, exchangeRates] = await Promise.all([
+		const [txs, exchangeRates] = await Promise.all([
 			transactions,
 			this._getExchangeRates()
 		]);
 
 		const exchangeRate = exchangeRates[this.localCurrency];
 
-		return txs.map(tx => this._friendlyTransaction(tx, exchangeRate));
+		return (txs || []).map(tx =>
+			this._friendlyTransaction(tx, exchangeRate)
+		);
 	}
 
 	async _getExchangeRates () {
-		return this.localCurrency === 'BTC' ? {BTC: 1} : getExchangeRates();
+		return this.localCurrency === 'BTC' ?
+			{BTC: 1} :
+			getExchangeRates(this.bitcoinCash);
 	}
 
 	_watchTransactions () {
@@ -230,6 +292,10 @@ class Wallet {
 		if (!this.subjects[subjectID]) {
 			const subject = new Subject();
 			this.subjects[subjectID] = subject;
+
+			if (this.bitcoinCash) {
+				return subject;
+			}
 
 			const socket = new WebSocket(blockchainWebSocketURL);
 
@@ -262,21 +328,18 @@ class Wallet {
 
 		const [balance, unspentResponse] = await Promise.all([
 			this.getBalance(),
-			blockchainAPIRequest('unspent', {active: this.address}).catch(
-				() => ({
-					unspent_outputs: []
-				})
-			)
+			blockchainAPIRequest(
+				this.bitcoinCash,
+				`address/${this.address}/unspent`
+			).catch(() => [])
 		]);
 
-		const utxos = ((unspentResponse || {}).unspent_outputs || []).map(
-			o => ({
-				outputIndex: o.tx_output_n,
-				satoshis: o.value,
-				scriptPubKey: o.script,
-				txid: o.tx_hash_big_endian
-			})
-		);
+		const utxos = (unspentResponse || []).map(o => ({
+			outputIndex: o.index,
+			satoshis: o.value,
+			scriptPubKey: o.pkscript,
+			txid: o.txid
+		}));
 
 		amount = amount / balance._exchangeRates[this.localCurrency];
 
@@ -295,10 +358,13 @@ class Wallet {
 
 		const createBitcoreTransaction = retries => {
 			try {
-				return new BitcoreTransaction()
+				return new this.bitcore.BitcoreTransaction()
 					.from(
 						utxos.map(
-							utxo => new BitcoreTransaction.UnspentOutput(utxo)
+							utxo =>
+								new this.bitcore.BitcoreTransaction.UnspentOutput(
+									utxo
+								)
 						)
 					)
 					.to(
@@ -310,7 +376,7 @@ class Wallet {
 						Math.floor(amount * satoshiConversion)
 					)
 					.change(this.address)
-					.fee(transactionFee)
+					.fee(this.transactionFeeSatoshi)
 					.sign(this.key);
 			}
 			catch (e) {
@@ -329,14 +395,16 @@ class Wallet {
 
 	async getBalance () {
 		const [balanceResponse, exchangeRates] = await Promise.all([
-			blockchainAPIRequest('balance', {active: this.address}),
+			blockchainAPIRequest(
+				this.bitcoinCash,
+				`address/${this.address}/balance`
+			),
 			this._getExchangeRates()
 		]);
 
 		let balance = 0;
 		try {
-			balance =
-				balanceResponse[this.address].final_balance / satoshiConversion;
+			balance = balanceResponse.confirmed / satoshiConversion;
 		}
 		catch (_) {}
 
@@ -351,7 +419,10 @@ class Wallet {
 
 	async getTransactionHistory () {
 		return this._friendlyTransactions(
-			blockchainAPIRequest(`rawaddr/${this.address}`)
+			blockchainAPIRequest(
+				this.bitcoinCash,
+				`address/${this.address}/transactions/full`
+			)
 		);
 	}
 
@@ -364,10 +435,18 @@ class Wallet {
 		const txid = transaction.id;
 		this.originatingTransactions[txid] = true;
 
-		const formData = new FormData();
-		formData.append('tx', transaction.serialize());
+		const txdata = transaction.serialize();
 
-		return request(blockchainAPI('pushtx'), {
+		if (this.bitcoinCash) {
+			return request(
+				`https://rest.bitcoin.com/v2/rawtransactions/sendRawTransaction/${txdata}`
+			).then(async o => o.text());
+		}
+
+		const formData = new FormData();
+		formData.append('tx', txdata);
+
+		return request('https://blockchain.info/pushtx', {
 			body: formData,
 			method: 'POST'
 		}).then(async o => o.text());
@@ -384,7 +463,8 @@ class Wallet {
 						async () =>
 							(await this._friendlyTransactions(
 								blockchainAPIRequest(
-									`rawtx/${txid}`
+									this.bitcoinCash,
+									`transactions/${txid}`
 								).then(o => [o])
 							))[0]
 					)
@@ -440,9 +520,10 @@ class Wallet {
 const simplebtc = {
 	getExchangeRates,
 	minimumTransactionAmount:
-		BitcoreTransaction.DUST_AMOUNT / satoshiConversion,
+		bitcore.bitcoin.BitcoreTransaction.DUST_AMOUNT / satoshiConversion,
 	setBlockchainAPIKey,
-	transactionFee: transactionFee / satoshiConversion,
+	transactionFees,
+	transactionFeesSatoshi,
 	Wallet
 };
 
