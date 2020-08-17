@@ -5,7 +5,7 @@ High-level Bitcoin library and command line tool; originally created for [Token]
 
 For complete API documentation, read the type declaration file.
 
-### Require (Node.js)
+### Import
 
 ```
 	import {Wallet} from 'simplebtc';
