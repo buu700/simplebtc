@@ -69,6 +69,22 @@ const request = async (url, opts, delay = 0, maxRetries = 2, retries = 0) => {
 	}
 };
 
+const bitcoinCashAddresses = {};
+
+const getBitcoinCashAddress = legacyAddress => {
+	if (!bitcoinCashAddresses[legacyAddress]) {
+		bitcoinCashAddresses[
+			legacyAddress
+		] = bitcore.bitcoinCash.address
+			.fromPublicKeyHash(
+				bitcore.bitcoin.address.fromString(legacyAddress).hashBuffer
+			)
+			.toString();
+	}
+
+	return bitcoinCashAddresses[legacyAddress];
+};
+
 const satoshiConversion = 100000000;
 const transactionFeesSatoshi = {
 	bitcoin: 12000,
@@ -207,12 +223,7 @@ class Wallet {
 				this.bitcoinCash &&
 				bitcore.bitcoin.address.isValid(this.address)
 			) {
-				this.address = bitcore.bitcoinCash.address
-					.fromPublicKeyHash(
-						bitcore.bitcoin.address.fromString(this.address)
-							.hashBuffer
-					)
-					.toString();
+				this.address = getBitcoinCashAddress(this.address);
 			}
 			else {
 				throw new Error(`Invalid Address: ${this.address}.`);
@@ -255,7 +266,10 @@ class Wallet {
 		transactionData.amount = transactionData.valueOutLocal;
 
 		for (const vin of inputs) {
-			const address = this.bitcoinCash ? vin.cashAddress : vin.addr;
+			const address = this.bitcoinCash ?
+				vin.cashAddress || getBitcoinCashAddress(vin.addr) :
+				vin.addr;
+
 			const value = getValue(vin);
 
 			transactionData.wasSentByMe =
@@ -268,8 +282,10 @@ class Wallet {
 
 		for (const vout of outputs) {
 			const address = this.bitcoinCash ?
-				vout.scriptPubKey.cashAddrs[0] :
+				(vout.scriptPubKey.cashAddrs ||
+					vout.scriptPubKey.addresses.map(getBitcoinCashAddress))[0] :
 				[vout.addr];
+
 			const value = getValue(vout);
 
 			vout.valueLocal = value * exchangeRate;
@@ -288,12 +304,16 @@ class Wallet {
 			transaction.confirmations || 0 :
 			blockCount - (transaction.block_height || blockCount);
 
+		const id = this.bitcoinCash ?
+			transaction.txid :
+			transaction.hash || transaction.txid;
+
 		return {
 			amount: parseFloat(
 				(transactionData.amount / satoshiConversion).toFixed(8)
 			),
 			baseTransaction: transaction,
-			id: transaction.txid,
+			id,
 			isConfirmed: confirmations >= 6,
 			recipients: Object.keys(recipientAddresses),
 			senders: Object.keys(senderAddresses),
@@ -307,7 +327,7 @@ class Wallet {
 			transactions,
 			this.bitcoinCash ?
 				undefined :
-				blockchainAPIRequest('q/getblockcount')
+				request(blockchainAPI('q/getblockcount'))
 					.then(async o => o.text())
 					.then(s => parseInt(s, 10)),
 			this._getExchangeRates()
