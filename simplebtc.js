@@ -166,7 +166,7 @@ class Wallet {
 			this.localCurrency = options.localCurrency;
 			this.key = options.key;
 			this.originatingTransactions = options.originatingTransactions;
-			this.subjects = {};
+			this.observables = {};
 
 			return;
 		}
@@ -200,7 +200,7 @@ class Wallet {
 			this.key.toAddress().toString();
 
 		this.originatingTransactions = {};
-		this.subjects = {};
+		this.observables = {};
 
 		if (!this.bitcore.address.isValid(this.address)) {
 			if (
@@ -321,11 +321,11 @@ class Wallet {
 	}
 
 	_watchTransactions () {
-		const subjectID = `_watchTransactions ${this.address}`;
+		const observableID = `_watchTransactions ${this.address}`;
 
-		if (!this.subjects[subjectID]) {
+		if (!this.observables[observableID]) {
 			const subject = new Subject();
-			this.subjects[subjectID] = subject;
+			this.observables[observableID] = subject;
 
 			if (this.bitcoinCash) {
 				return subject;
@@ -352,7 +352,7 @@ class Wallet {
 			};
 		}
 
-		return this.subjects[subjectID];
+		return this.observables[observableID];
 	}
 
 	async createTransaction (recipientAddress, amount) {
@@ -509,13 +509,13 @@ class Wallet {
 	}
 
 	watchNewTransactions (shouldIncludeUnconfirmed = true) {
-		const subjectID = `watchNewTransactions ${this.address}`;
+		const observableID = `watchNewTransactions ${this.address}`;
 
-		if (!this.subjects[subjectID]) {
-			this.subjects[subjectID] = this._watchTransactions().pipe(
+		if (!this.observables[observableID]) {
+			this.observables[observableID] = this._watchTransactions().pipe(
 				mergeMap(async txid =>
 					lock(
-						subjectID,
+						observableID,
 						async () =>
 							(await this._friendlyTransactions(
 								(this.bitcoinCash ?
@@ -531,8 +531,8 @@ class Wallet {
 		}
 
 		return shouldIncludeUnconfirmed ?
-			this.subjects[subjectID] :
-			this.subjects[subjectID].pipe(
+			this.observables[observableID] :
+			this.observables[observableID].pipe(
 				map(transactions =>
 					transactions.filter(transaction => transaction.isConfirmed)
 				)
@@ -540,11 +540,11 @@ class Wallet {
 	}
 
 	watchTransactionHistory (shouldIncludeUnconfirmed = true) {
-		const subjectID = `watchTransactionHistory ${this.address}`;
+		const observableID = `watchTransactionHistory ${this.address}`;
 
-		if (!this.subjects[subjectID]) {
+		if (!this.observables[observableID]) {
 			const subject = new ReplaySubject(1);
-			this.subjects[subjectID] = subject;
+			this.observables[observableID] = subject;
 
 			this.getTransactionHistory()
 				.then(transactions => {
@@ -553,7 +553,7 @@ class Wallet {
 					this._watchTransactions()
 						.pipe(
 							mergeMap(async () =>
-								lock(subjectID, async () =>
+								lock(observableID, async () =>
 									this.getTransactionHistory()
 								)
 							)
@@ -561,13 +561,13 @@ class Wallet {
 						.subscribe(subject);
 				})
 				.catch(err => {
-					this.subjects[subjectID].error(err);
+					this.observables[observableID].error(err);
 				});
 		}
 
 		return shouldIncludeUnconfirmed ?
-			this.subjects[subjectID] :
-			this.subjects[subjectID].pipe(
+			this.observables[observableID] :
+			this.observables[observableID].pipe(
 				map(transactions =>
 					transactions.filter(transaction => transaction.isConfirmed)
 				)
