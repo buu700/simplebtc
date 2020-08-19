@@ -20,7 +20,7 @@ const bitcore = {
 };
 
 const FormData = require('form-data');
-const {ReplaySubject, Subject} = require('rxjs');
+const {Observable, ReplaySubject, Subject} = require('rxjs');
 const {map, mergeMap} = require('rxjs/operators');
 
 const fetch =
@@ -221,6 +221,10 @@ class Wallet {
 	}
 
 	_friendlyTransaction (transaction, blockCount, exchangeRate) {
+		if ('baseTransaction' in transaction) {
+			return transaction;
+		}
+
 		const senderAddresses = {};
 		const recipientAddresses = {};
 
@@ -324,32 +328,68 @@ class Wallet {
 		const observableID = `_watchTransactions ${this.address}`;
 
 		if (!this.observables[observableID]) {
-			const subject = new Subject();
-			this.observables[observableID] = subject;
-
 			if (this.bitcoinCash) {
-				return subject;
+				this.observables[observableID] = new Observable(observer => {
+					let alive = true;
+
+					/* Workaround until we have an equivalent socket API */
+					(async () => {
+						let lastTransactionHistory;
+
+						while (alive) {
+							const transactionHistory = await this.getTransactionHistory();
+
+							const delta = lastTransactionHistory ?
+								transactionHistory.length -
+								lastTransactionHistory.length :
+								0;
+
+							for (let i = 0; i < delta; ++i) {
+								const o = transactionHistory[i];
+								observer.next(() => o);
+							}
+
+							lastTransactionHistory = transactionHistory;
+							await sleep(300000);
+						}
+					})();
+
+					return () => {
+						alive = false;
+					};
+				});
 			}
+			else {
+				const subject = new Subject();
+				this.observables[observableID] = subject;
 
-			const socket = new WebSocket(blockchainWebSocketURL);
+				const socket = new WebSocket(blockchainWebSocketURL);
 
-			socket.onopen = () => {
-				socket.send(
-					JSON.stringify({op: 'addr_sub', addr: this.address})
-				);
-			};
+				socket.onopen = () => {
+					socket.send(
+						JSON.stringify({op: 'addr_sub', addr: this.address})
+					);
+				};
 
-			socket.onmessage = msg => {
-				let txid;
-				try {
-					txid = JSON.parse(msg.data).x.hash;
-				}
-				catch (_) {}
+				socket.onmessage = msg => {
+					let txid;
+					try {
+						txid = JSON.parse(msg.data).x.hash;
+					}
+					catch (_) {}
 
-				if (txid) {
-					subject.next(txid);
-				}
-			};
+					if (txid) {
+						subject.next(
+							async () =>
+								(await this._friendlyTransactions(
+									blockchainAPIRequest(
+										`rawtx/${txid}`
+									).then(o => [o])
+								))[0]
+						);
+					}
+				};
+			}
 		}
 
 		return this.observables[observableID];
@@ -513,19 +553,8 @@ class Wallet {
 
 		if (!this.observables[observableID]) {
 			this.observables[observableID] = this._watchTransactions().pipe(
-				mergeMap(async txid =>
-					lock(
-						observableID,
-						async () =>
-							(await this._friendlyTransactions(
-								(this.bitcoinCash ?
-									bitcoinCashAPIRequest(
-										`transaction/details/${txid}`
-									) :
-									blockchainAPIRequest(`rawtx/${txid}`)
-								).then(o => [o])
-							))[0]
-					)
+				mergeMap(async getTransaction =>
+					lock(observableID, getTransaction)
 				)
 			);
 		}
