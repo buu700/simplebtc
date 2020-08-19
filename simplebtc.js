@@ -80,11 +80,12 @@ const transactionFees = {
 };
 
 let blockchainAPIKey = undefined;
-const blockchainAPIURL = 'https://api.blockchain.info/haskoin-store/';
+const blockchainAPIURL = 'https://blockchain.info/';
 const blockchainWebSocketURL = 'wss://ws.blockchain.info/inv';
 
-const blockchainAPI = (bitcoinCash, url, _PARAMS) => {
-	/*
+const bitcoinCashAPIURL = 'https://rest.bitcoin.com/v2/';
+
+const blockchainAPI = (url, params = {}) => {
 	if (params.cors !== false) {
 		params.cors = true;
 	}
@@ -92,20 +93,29 @@ const blockchainAPI = (bitcoinCash, url, _PARAMS) => {
 	if (blockchainAPIKey) {
 		params.key = blockchainAPIKey;
 	}
-	*/
 
-	const baseURL = blockchainAPIURL + (bitcoinCash ? 'bch/' : 'btc/');
-
-	return baseURL + url;
+	return `${blockchainAPIURL + url}?${Object.keys(params)
+		.map(k => `${k}=${params[k]}`)
+		.join('&')}`;
 };
 
-const blockchainAPIRequest = async (bitcoinCash, url, params) => {
+const blockchainAPIRequest = async (url, params) => {
 	return request(
-		blockchainAPI(bitcoinCash, url, params),
+		blockchainAPI(url, params),
 		undefined,
 		/* blockchainAPIKey ? 0 : 10000 */
 		10000
 	).then(async o => o.json());
+};
+
+const bitcoinCashAPI = url => {
+	return bitcoinCashAPIURL + url;
+};
+
+const bitcoinCashAPIRequest = async url => {
+	return request(bitcoinCashAPI(url), undefined, 1000).then(async o =>
+		o.json()
+	);
 };
 
 const getExchangeRates = async bitcoinCash => {
@@ -210,17 +220,26 @@ class Wallet {
 		}
 	}
 
-	_friendlyTransaction (transaction, exchangeRate) {
+	_friendlyTransaction (transaction, blockCount, exchangeRate) {
 		const senderAddresses = {};
 		const recipientAddresses = {};
 
-		const valueIn = transaction.inputs
-			.map(o => o.value)
-			.reduce((a, b) => a + b, 0);
+		const inputs = this.bitcoinCash ?
+			transaction.vin :
+			transaction.inputs.map(o => o.prev_out);
 
-		const valueOut = transaction.outputs
-			.map(o => o.value)
-			.reduce((a, b) => a + b, 0);
+		const outputs = this.bitcoinCash ? transaction.vout : transaction.out;
+
+		const getValue = o =>
+			typeof o.valueSat === 'number' ?
+				o.valueSat :
+			typeof o.value === 'string' ?
+				parseFloat(o.value) * satoshiConversion :
+				o.value;
+
+		const valueIn = inputs.map(getValue).reduce((a, b) => a + b, 0);
+
+		const valueOut = outputs.map(getValue).reduce((a, b) => a + b, 0);
 
 		const transactionData = {
 			amount: undefined,
@@ -231,27 +250,39 @@ class Wallet {
 
 		transactionData.amount = transactionData.valueOutLocal;
 
-		for (const vin of transaction.inputs) {
+		for (const vin of inputs) {
+			const address = this.bitcoinCash ? vin.cashAddress : vin.addr;
+			const value = getValue(vin);
+
 			transactionData.wasSentByMe =
-				transactionData.wasSentByMe || vin.address === this.address;
+				transactionData.wasSentByMe || address === this.address;
 
-			vin.valueLocal = vin.value * exchangeRate;
+			vin.valueLocal = value * exchangeRate;
 
-			senderAddresses[vin.address] = true;
+			senderAddresses[address] = true;
 		}
 
-		for (const vout of transaction.outputs) {
-			vout.valueLocal = vout.value * exchangeRate;
+		for (const vout of outputs) {
+			const address = this.bitcoinCash ?
+				vout.scriptPubKey.cashAddrs[0] :
+				[vout.addr];
+			const value = getValue(vout);
 
-			if (vout.address) {
-				if (senderAddresses[vout.address]) {
+			vout.valueLocal = value * exchangeRate;
+
+			if (address) {
+				if (senderAddresses[address]) {
 					transactionData.amount -= vout.valueLocal;
 				}
 				else {
-					recipientAddresses[vout.address] = true;
+					recipientAddresses[address] = true;
 				}
 			}
 		}
+
+		const confirmations = this.bitcoinCash ?
+			transaction.confirmations || 0 :
+			blockCount - (transaction.block_height || blockCount);
 
 		return {
 			amount: parseFloat(
@@ -259,7 +290,7 @@ class Wallet {
 			),
 			baseTransaction: transaction,
 			id: transaction.txid,
-			isConfirmed: !transaction.rbf,
+			isConfirmed: confirmations >= 6,
 			recipients: Object.keys(recipientAddresses),
 			senders: Object.keys(senderAddresses),
 			timestamp: transaction.time * 1000,
@@ -268,22 +299,25 @@ class Wallet {
 	}
 
 	async _friendlyTransactions (transactions) {
-		const [txs, exchangeRates] = await Promise.all([
+		const [txs, blockCount, exchangeRates] = await Promise.all([
 			transactions,
+			this.bitcoinCash ?
+				undefined :
+				blockchainAPIRequest('q/getblockcount')
+					.then(async o => o.text())
+					.then(s => parseInt(s, 10)),
 			this._getExchangeRates()
 		]);
 
 		const exchangeRate = exchangeRates[this.localCurrency];
 
-		return (txs || []).map(tx =>
-			this._friendlyTransaction(tx, exchangeRate)
+		return txs.map(tx =>
+			this._friendlyTransaction(tx, blockCount, exchangeRate)
 		);
 	}
 
 	async _getExchangeRates () {
-		return this.localCurrency === 'BTC' ?
-			{BTC: 1} :
-			getExchangeRates(this.bitcoinCash);
+		return this.localCurrency === 'BTC' ? {BTC: 1} : getExchangeRates();
 	}
 
 	_watchTransactions () {
@@ -326,20 +360,32 @@ class Wallet {
 			throw new Error('Read-only wallet');
 		}
 
-		const [balance, unspentResponse] = await Promise.all([
+		const [balance, utxos] = await Promise.all([
 			this.getBalance(),
-			blockchainAPIRequest(
-				this.bitcoinCash,
-				`address/${this.address}/unspent`
-			).catch(() => [])
+			this.bitcoinCash ?
+				bitcoinCashAPIRequest(`address/utxo/${this.address}`)
+					.catch(() => undefined)
+					.then(unspentResponse =>
+						((unspentResponse || {}).utxos || []).map(o => ({
+							outputIndex: o.vout,
+							satoshis: o.satoshis,
+							scriptPubKey: unspentResponse.scriptPubKey,
+							txid: o.txid
+						}))
+					) :
+				blockchainAPIRequest('unspent', {active: this.address})
+					.catch(() => undefined)
+					.then(unspentResponse =>
+						((unspentResponse || {}).unspent_outputs || []).map(
+							o => ({
+								outputIndex: o.tx_output_n,
+								satoshis: o.value,
+								scriptPubKey: o.script,
+								txid: o.tx_hash_big_endian
+							})
+						)
+					)
 		]);
-
-		const utxos = (unspentResponse || []).map(o => ({
-			outputIndex: o.index,
-			satoshis: o.value,
-			scriptPubKey: o.pkscript,
-			txid: o.txid
-		}));
 
 		amount = amount / balance._exchangeRates[this.localCurrency];
 
@@ -394,19 +440,27 @@ class Wallet {
 	}
 
 	async getBalance () {
-		const [balanceResponse, exchangeRates] = await Promise.all([
-			blockchainAPIRequest(
-				this.bitcoinCash,
-				`address/${this.address}/balance`
-			),
+		const [balance, exchangeRates] = await Promise.all([
+			this.bitcoinCash ?
+				bitcoinCashAPIRequest(`address/details/${this.address}`)
+					.catch(() => undefined)
+					.then(
+						detailsResponse => (detailsResponse || {}).balance || 0
+					) :
+				blockchainAPIRequest('balance', {active: this.address}).then(
+					balanceResponse => {
+						let n = 0;
+						try {
+							n =
+								balanceResponse[this.address].final_balance /
+								satoshiConversion;
+						}
+						catch (_) {}
+						return n;
+					}
+				),
 			this._getExchangeRates()
 		]);
-
-		let balance = 0;
-		try {
-			balance = balanceResponse.confirmed / satoshiConversion;
-		}
-		catch (_) {}
 
 		return {
 			_exchangeRates: exchangeRates,
@@ -419,9 +473,11 @@ class Wallet {
 
 	async getTransactionHistory () {
 		return this._friendlyTransactions(
-			blockchainAPIRequest(
-				this.bitcoinCash,
-				`address/${this.address}/transactions/full`
+			(this.bitcoinCash ?
+				bitcoinCashAPIRequest(`address/transactions/${this.address}`) :
+				blockchainAPIRequest(`rawaddr/${this.address}`)
+			).then(
+				transactionsResponse => (transactionsResponse || {}).txs || []
 			)
 		);
 	}
@@ -439,14 +495,14 @@ class Wallet {
 
 		if (this.bitcoinCash) {
 			return request(
-				`https://rest.bitcoin.com/v2/rawtransactions/sendRawTransaction/${txdata}`
+				bitcoinCashAPI(`rawtransactions/sendRawTransaction/${txdata}`)
 			).then(async o => o.text());
 		}
 
 		const formData = new FormData();
 		formData.append('tx', txdata);
 
-		return request('https://blockchain.info/pushtx', {
+		return request(blockchainAPI('pushtx'), {
 			body: formData,
 			method: 'POST'
 		}).then(async o => o.text());
@@ -462,9 +518,11 @@ class Wallet {
 						subjectID,
 						async () =>
 							(await this._friendlyTransactions(
-								blockchainAPIRequest(
-									this.bitcoinCash,
-									`transactions/${txid}`
+								(this.bitcoinCash ?
+									bitcoinCashAPIRequest(
+										`transaction/details/${txid}`
+									) :
+									blockchainAPIRequest(`rawtx/${txid}`)
 								).then(o => [o])
 							))[0]
 					)
