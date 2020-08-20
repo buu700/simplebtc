@@ -75,7 +75,7 @@ const request = async (url, opts, delay = 0, maxRetries = 2, retries = 0) =>
 			}
 
 			await sleep(1000);
-			return request(url, opts, delay, maxRetries, retries + 1);
+			resolve(request(url, opts, delay, maxRetries, retries + 1));
 		})
 	);
 
