@@ -49,25 +49,35 @@ const lock = async (id, f, delay = 0) => {
 	return promise;
 };
 
-const request = async (url, opts, delay = 0, maxRetries = 2, retries = 0) => {
-	try {
-		const o = await lock('request', async () => fetch(url, opts));
+const request = async (url, opts, delay = 0, maxRetries = 2, retries = 0) =>
+	new Promise(async (resolve, reject) =>
+		lock(`request:${url.split('/')[2]}`, async () => {
+			try {
+				const o = await fetch(url, opts);
 
-		if (o.status !== 200) {
-			throw new Error(`Request failure: status ${o.status.toString()}`);
-		}
+				if (o.status !== 200) {
+					throw new Error(
+						`Request failure: status ${o.status.toString()}`
+					);
+				}
 
-		return o;
-	}
-	catch (err) {
-		if (retries >= maxRetries) {
-			throw err;
-		}
+				resolve(o);
+				return;
+			}
+			catch (err) {
+				if (retries >= maxRetries) {
+					reject(err);
+					return;
+				}
+			}
+			finally {
+				await sleep(delay);
+			}
 
-		await sleep(delay + 1000);
-		return request(url, opts, delay, maxRetries, retries + 1);
-	}
-};
+			await sleep(1000);
+			return request(url, opts, delay, maxRetries, retries + 1);
+		})
+	);
 
 const bitcoinCashAddresses = {};
 
