@@ -1,11 +1,11 @@
 {
 	"name": "simplebtc",
-	"version": "4.1.1",
+	"version": "4.2.0",
 	"description": "High-level Bitcoin library and command line tool",
 	"main": "dist/simplebtc.js",
 	"types": "simplebtc.d.ts",
 	"scripts": {
-		"build": "npx babel simplebtc.js -o dist/simplebtc.js && webpack --mode none --output-library-target var --output-library simplebtc dist/simplebtc.js -o dist/simplebtc.global.js && terser dist/simplebtc.js -cmo dist/simplebtc.js && terser dist/simplebtc.global.js -cmo dist/simplebtc.global.js",
+		"build": "npx babel simplebtc.js -o dist/simplebtc.js && webpack -c webpack.config.js && terser dist/simplebtc.js -cmo dist/simplebtc.js && terser dist/simplebtc.global.js -cmo dist/simplebtc.global.js",
 		"test": "echo \"Error: no test specified\" ; exit 1",
 		"setUpBashCompletion": "mkdir -p /etc/bash_completion.d/ > /dev/null 2>&1 ; bash -c \"echo 'complete -W \\\"address balance history stream send\\\" simplebtc' > /etc/bash_completion.d/simplebtc\" > /dev/null 2>&1 ; exit 0"
 	},
@@ -30,9 +30,10 @@
 		"url": "https://github.com/buu700/simplebtc/issues"
 	},
 	"dependencies": {
-		"@types/bitcore-lib": "0",
-		"bitcore-lib": "^0",
-		"bitcore-lib-cash": "^0",
+		"@types/bitcore-lib": "^0",
+		"@types/bitcore-lib-cash": "^8",
+		"bitcore-lib": "^8",
+		"bitcore-lib-cash": "^8",
 		"form-data": "*",
 		"node-fetch": "*",
 		"rxjs": "^6",
@@ -46,9 +47,12 @@
 		"@babel/runtime": "^7",
 		"@cyph/prettier": "*",
 		"@cyph/pretty-quick": "*",
+		"assert-browserify": "*",
+		"crypto-browserify": "*",
 		"husky": "*",
-		"webpack": "^4",
-		"webpack-cli": "^3"
+		"stream-browserify": "*",
+		"webpack": "^5",
+		"webpack-cli": "^4"
 	},
 	"bin": {
 		"simplebtc": "simplebtc-cli.js"
