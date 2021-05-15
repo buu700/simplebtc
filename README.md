@@ -120,7 +120,7 @@ Similar to Bitcoin Core, unspent transaction outputs which originated locally wi
 ### Export Wallet to WIF
 
 ```
-	wallet.key	// KxMhr6RcBk9N2D8sZTsbjjfpbPonm4BnpTLZn8G4fdEUdoVvdkNC
+	wallet.key.toWIF()	// L4udA8nLC1r2xCVuzretgKuAZkvQq2aCZWKgiGXrxWEcH956xeE2
 ```
 
 ### Install
