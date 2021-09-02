@@ -27,7 +27,7 @@ const fetch =
 	typeof rootScope.fetch === 'function' ?
 		rootScope.fetch :
 	isNode ?
-		eval('require')('node-fetch') :
+		async (url, options) => (await eval('import("node-fetch")')).default(url, options) :
 		require('whatwg-fetch');
 
 const sleep = async (ms = 250) =>
