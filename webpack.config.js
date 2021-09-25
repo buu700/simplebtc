@@ -1,3 +1,5 @@
+const {ProvidePlugin} = require('webpack');
+
 module.exports = [
 	{
 		entry: './dist/simplebtc.js',
@@ -8,11 +10,17 @@ module.exports = [
 			library: 'simplebtc',
 			libraryTarget: 'umd'
 		},
+		plugins: [
+			new ProvidePlugin({
+				Buffer: ['buffer', 'Buffer'],
+				process: 'process/browser'
+			})
+		],
 		resolve: {
-			fallback: {
-				assert: require.resolve('assert-browserify'),
-				crypto: require.resolve('crypto-browserify'),
-				stream: require.resolve('stream-browserify')
+			alias: {
+				assert: 'assert-browserify',
+				crypto: 'crypto-browserify',
+				stream: 'stream-browserify'
 			}
 		}
 	}

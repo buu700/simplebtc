@@ -1,6 +1,6 @@
 {
 	"name": "simplebtc",
-	"version": "5.0.0",
+	"version": "5.0.1",
 	"description": "High-level Bitcoin library and command line tool",
 	"main": "dist/simplebtc.js",
 	"types": "simplebtc.d.ts",
@@ -48,8 +48,10 @@
 		"@cyph/prettier": "*",
 		"@cyph/pretty-quick": "*",
 		"assert-browserify": "*",
+		"buffer": "*",
 		"crypto-browserify": "*",
 		"husky": "*",
+		"process": "*",
 		"stream-browserify": "*",
 		"webpack": "^5",
 		"webpack-cli": "^4"
