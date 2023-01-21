@@ -109,12 +109,19 @@ let blockchainAPIKey = undefined;
 const blockchainAPIURL = 'https://blockchain.info/';
 const blockchainWebSocketURL = 'wss://ws.blockchain.info/inv';
 
+let fullStackCashAPITokenTier = 0;
+const fullStackCashRequestsPerMinute = {
+	0: 10,
+	1: 100,
+	2: 250
+};
+
 const blockchainAPI = (url, params = {}) => {
 	if (params.cors !== false) {
 		params.cors = true;
 	}
 
-	if (blockchainAPIKey) {
+	if (blockchainAPIKey !== undefined) {
 		params.key = blockchainAPIKey;
 	}
 
@@ -133,6 +140,15 @@ const blockchainAPIRequest = async (url, params) => {
 };
 
 let bchjs = new BCHJS();
+
+const bchjsLock = async f =>
+	lock(
+		'bchjs',
+		f,
+		Math.ceil(
+			60000 / fullStackCashRequestsPerMinute[fullStackCashAPITokenTier]
+		)
+	);
 
 const getExchangeRates = async bitcoinCash => {
 	const [o, conversionRate] = await Promise.all([
@@ -164,8 +180,9 @@ const setBlockchainAPIKey = apiKey => {
 	blockchainAPIKey = apiKey;
 };
 
-const setFullStackCashAPIToken = apiToken => {
+const setFullStackCashAPIToken = (apiToken, tier = 1) => {
 	bchjs = new BCHJS({apiToken});
+	fullStackCashAPITokenTier = tier;
 };
 
 class Wallet {
@@ -250,7 +267,9 @@ class Wallet {
 				transaction.vin.map(
 					async o =>
 						(
-							await bchjs.Electrumx.txData(o.txid)
+							await bchjsLock(async () =>
+								bchjs.Electrumx.txData(o.txid)
+							)
 						).details.vout[o.vout]
 				)
 			) :
@@ -343,7 +362,9 @@ class Wallet {
 					transactions.map(
 						async ({tx_hash}) =>
 							(
-								await bchjs.Electrumx.txData(tx_hash)
+								await bchjsLock(async () =>
+									bchjs.Electrumx.txData(tx_hash)
+								)
 							).details
 					)
 				) :
@@ -451,7 +472,7 @@ class Wallet {
 		const [balance, utxos] = await Promise.all([
 			this.getBalance(),
 			this.bitcoinCash ?
-				bchjs.Electrumx.utxo(this.address)
+				bchjsLock(async () => bchjs.Electrumx.utxo(this.address))
 					.catch(() => undefined)
 					.then(async unspentResponse => Promise.all(
 							((unspentResponse || {}).utxos || []).map(
@@ -459,8 +480,10 @@ class Wallet {
 									outputIndex: o.tx_pos,
 									satoshis: o.value,
 									scriptPubKey: (
-											await bchjs.Electrumx.txData(
-												o.tx_hash
+											await bchjsLock(async () =>
+												bchjs.Electrumx.txData(
+													o.tx_hash
+												)
 											)
 										).details.vout[o.tx_pos].scriptPubKey
 											.hex,
@@ -537,7 +560,7 @@ class Wallet {
 	async getBalance () {
 		const [balance, exchangeRates] = await Promise.all([
 			this.bitcoinCash ?
-				bchjs.Electrumx.balance(this.address)
+				bchjsLock(async () => bchjs.Electrumx.balance(this.address))
 					.catch(() => undefined)
 					.then(
 						detailsResponse =>
@@ -572,7 +595,11 @@ class Wallet {
 	async getTransactionHistory () {
 		return this._friendlyTransactions(
 			this.bitcoinCash ?
-				(await bchjs.Electrumx.transactions(addr))?.transactions ?? [] :
+				(
+					await bchjsLock(async () =>
+						bchjs.Electrumx.transactions(this.address)
+					)
+				)?.transactions ?? [] :
 				(await blockchainAPIRequest(`rawaddr/${this.address}`))?.txs ??
 					[]
 		);
@@ -590,7 +617,9 @@ class Wallet {
 		const txdata = transaction.serialize();
 
 		if (this.bitcoinCash) {
-			return JSON.stringify(await bchjs.Electrumx.broadcast(txdata));
+			return JSON.stringify(
+				await bchjsLock(async () => bchjs.Electrumx.broadcast(txdata))
+			);
 		}
 
 		const formData = new FormData();

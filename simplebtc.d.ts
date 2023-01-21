@@ -122,5 +122,8 @@ declare module 'simplebtc' {
 	const setBlockchainAPIKey: (apiKey: string) => void;
 
 	/** Sets FullStack.Cash API token. */
-	const setFullStackCashAPIToken: (apiToken: string) => void;
+	const setFullStackCashAPIToken: (
+		apiToken: string,
+		tier: 0 | 1 | 2 = 1
+	) => void;
 }
