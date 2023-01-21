@@ -1,6 +1,6 @@
 {
 	"name": "simplebtc",
-	"version": "5.0.1",
+	"version": "6.0.0",
 	"description": "High-level Bitcoin library and command line tool",
 	"main": "dist/simplebtc.js",
 	"types": "simplebtc.d.ts",
@@ -36,7 +36,7 @@
 		"bitcore-lib-cash": "^8",
 		"form-data": "*",
 		"node-fetch": "*",
-		"rxjs": "^6",
+		"rxjs": "^7",
 		"whatwg-fetch": "*"
 	},
 	"devDependencies": {
