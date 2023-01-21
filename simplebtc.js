@@ -27,7 +27,8 @@ const fetch =
 	typeof rootScope.fetch === 'function' ?
 		rootScope.fetch :
 	isNode ?
-		async (url, options) => (await eval('import("node-fetch")')).default(url, options) :
+		async (url, options) =>
+			(await eval('import("node-fetch")')).default(url, options) :
 		require('whatwg-fetch');
 
 const sleep = async (ms = 250) =>
@@ -83,9 +84,7 @@ const bitcoinCashAddresses = {};
 
 const getBitcoinCashAddress = legacyAddress => {
 	if (!bitcoinCashAddresses[legacyAddress]) {
-		bitcoinCashAddresses[
-			legacyAddress
-		] = bitcore.bitcoinCash.address
+		bitcoinCashAddresses[legacyAddress] = bitcore.bitcoinCash.address
 			.fromPublicKeyHash(
 				bitcore.bitcoin.address.fromString(legacyAddress).hashBuffer
 			)
@@ -149,9 +148,11 @@ const getExchangeRates = async bitcoinCash => {
 		request('https://blockchain.info/ticker').then(async o => o.json()),
 		bitcoinCash ?
 			(async () =>
-				(await request(
-					'https://api.coingecko.com/api/v3/exchange_rates'
-				).then(o => o.json())).rates.bch.value)() :
+				(
+					await request(
+						'https://api.coingecko.com/api/v3/exchange_rates'
+					).then(o => o.json())
+				).rates.bch.value)() :
 			1
 	]);
 
@@ -367,7 +368,8 @@ class Wallet {
 						let lastTransactionHistory;
 
 						while (alive) {
-							const transactionHistory = await this.getTransactionHistory();
+							const transactionHistory =
+								await this.getTransactionHistory();
 
 							const delta = lastTransactionHistory ?
 								transactionHistory.length -
@@ -411,11 +413,13 @@ class Wallet {
 					if (txid) {
 						subject.next(
 							async () =>
-								(await this._friendlyTransactions(
-									blockchainAPIRequest(
-										`rawtx/${txid}`
-									).then(o => [o])
-								))[0]
+								(
+									await this._friendlyTransactions(
+										blockchainAPIRequest(
+											`rawtx/${txid}`
+										).then(o => [o])
+									)
+								)[0]
 						);
 					}
 				};
