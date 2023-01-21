@@ -19,6 +19,7 @@ const bitcore = {
 	}
 };
 
+const BCHJS = require('@psf/bch-js');
 const FormData = require('form-data');
 const {Observable, ReplaySubject, Subject} = require('rxjs');
 const {map, mergeMap} = require('rxjs/operators');
@@ -108,8 +109,6 @@ let blockchainAPIKey = undefined;
 const blockchainAPIURL = 'https://blockchain.info/';
 const blockchainWebSocketURL = 'wss://ws.blockchain.info/inv';
 
-const bitcoinCashAPIURL = 'https://rest.bitcoin.com/v2/';
-
 const blockchainAPI = (url, params = {}) => {
 	if (params.cors !== false) {
 		params.cors = true;
@@ -133,15 +132,7 @@ const blockchainAPIRequest = async (url, params) => {
 	).then(async o => o.json());
 };
 
-const bitcoinCashAPI = url => {
-	return bitcoinCashAPIURL + url;
-};
-
-const bitcoinCashAPIRequest = async url => {
-	return request(bitcoinCashAPI(url), undefined, 1000).then(async o =>
-		o.json()
-	);
-};
+let bchjs = new BCHJS();
 
 const getExchangeRates = async bitcoinCash => {
 	const [o, conversionRate] = await Promise.all([
@@ -171,6 +162,10 @@ const getExchangeRates = async bitcoinCash => {
 
 const setBlockchainAPIKey = apiKey => {
 	blockchainAPIKey = apiKey;
+};
+
+const setFullStackCashAPIToken = apiToken => {
+	bchjs = new BCHJS({apiToken});
 };
 
 class Wallet {
@@ -242,7 +237,7 @@ class Wallet {
 		}
 	}
 
-	_friendlyTransaction (transaction, blockCount, exchangeRate) {
+	async _friendlyTransaction (transaction, blockCount, exchangeRate) {
 		if ('baseTransaction' in transaction) {
 			return transaction;
 		}
@@ -251,12 +246,21 @@ class Wallet {
 		const recipientAddresses = {};
 
 		const inputs = this.bitcoinCash ?
-			transaction.vin :
+			await Promise.all(
+				transaction.vin.map(
+					async o =>
+						(
+							await bchjs.Electrumx.txData(o.txid)
+						).details.vout[o.vout]
+				)
+			) :
 			transaction.inputs.map(o => o.prev_out);
 
 		const outputs = this.bitcoinCash ? transaction.vout : transaction.out;
 
 		const getValue = o =>
+			this.bitcoinCash ?
+				vin.value * satoshiConversion :
 			typeof o.valueSat === 'number' ?
 				o.valueSat :
 			typeof o.value === 'string' ?
@@ -278,7 +282,7 @@ class Wallet {
 
 		for (const vin of inputs) {
 			const address = this.bitcoinCash ?
-				vin.cashAddress || getBitcoinCashAddress(vin.addr) :
+				vin.scriptPubKey.addresses?.[0] :
 				vin.addr;
 
 			const value = getValue(vin);
@@ -293,9 +297,8 @@ class Wallet {
 
 		for (const vout of outputs) {
 			const address = this.bitcoinCash ?
-				(vout.scriptPubKey.cashAddrs ||
-					vout.scriptPubKey.addresses.map(getBitcoinCashAddress))[0] :
-				[vout.addr];
+				vout.scriptPubKey.addresses?.[0] :
+				vout.addr;
 
 			const value = getValue(vout);
 
@@ -335,7 +338,16 @@ class Wallet {
 
 	async _friendlyTransactions (transactions) {
 		const [txs, blockCount, exchangeRates] = await Promise.all([
-			transactions,
+			this.bitcoinCash ?
+				Promise.all(
+					transactions.map(
+						async ({tx_hash}) =>
+							(
+								await bchjs.Electrumx.txData(tx_hash)
+							).details
+					)
+				) :
+				transactions,
 			this.bitcoinCash ?
 				undefined :
 				request(blockchainAPI('q/getblockcount'))
@@ -346,8 +358,10 @@ class Wallet {
 
 		const exchangeRate = exchangeRates[this.localCurrency];
 
-		return txs.map(tx =>
-			this._friendlyTransaction(tx, blockCount, exchangeRate)
+		return Promise.all(
+			txs.map(async tx =>
+				this._friendlyTransaction(tx, blockCount, exchangeRate)
+			)
 		);
 	}
 
@@ -437,16 +451,23 @@ class Wallet {
 		const [balance, utxos] = await Promise.all([
 			this.getBalance(),
 			this.bitcoinCash ?
-				bitcoinCashAPIRequest(`address/utxo/${this.address}`)
+				bchjs.Electrumx.utxo(this.address)
 					.catch(() => undefined)
-					.then(unspentResponse =>
-						((unspentResponse || {}).utxos || []).map(o => ({
-							outputIndex: o.vout,
-							satoshis: o.satoshis,
-							scriptPubKey: unspentResponse.scriptPubKey,
-							txid: o.txid
-						}))
-					) :
+					.then(async unspentResponse => Promise.all(
+							((unspentResponse || {}).utxos || []).map(
+								async o => ({
+									outputIndex: o.tx_pos,
+									satoshis: o.value,
+									scriptPubKey: (
+											await bchjs.Electrumx.txData(
+												o.tx_hash
+											)
+										).details.vout[o.tx_pos].scriptPubKey
+											.hex,
+									txid: o.tx_hash
+								})
+							)
+						)) :
 				blockchainAPIRequest('unspent', {active: this.address})
 					.catch(() => undefined)
 					.then(unspentResponse =>
@@ -516,10 +537,13 @@ class Wallet {
 	async getBalance () {
 		const [balance, exchangeRates] = await Promise.all([
 			this.bitcoinCash ?
-				bitcoinCashAPIRequest(`address/details/${this.address}`)
+				bchjs.Electrumx.balance(this.address)
 					.catch(() => undefined)
 					.then(
-						detailsResponse => (detailsResponse || {}).balance || 0
+						detailsResponse =>
+							(detailsResponse?.success &&
+								detailsResponse.balance?.confirmed) ||
+							0
 					) :
 				blockchainAPIRequest('balance', {active: this.address}).then(
 					balanceResponse => {
@@ -547,12 +571,10 @@ class Wallet {
 
 	async getTransactionHistory () {
 		return this._friendlyTransactions(
-			(this.bitcoinCash ?
-				bitcoinCashAPIRequest(`address/transactions/${this.address}`) :
-				blockchainAPIRequest(`rawaddr/${this.address}`)
-			).then(
-				transactionsResponse => (transactionsResponse || {}).txs || []
-			)
+			this.bitcoinCash ?
+				(await bchjs.Electrumx.transactions(addr))?.transactions ?? [] :
+				(await blockchainAPIRequest(`rawaddr/${this.address}`))?.txs ??
+					[]
 		);
 	}
 
@@ -568,9 +590,7 @@ class Wallet {
 		const txdata = transaction.serialize();
 
 		if (this.bitcoinCash) {
-			return request(
-				bitcoinCashAPI(`rawtransactions/sendRawTransaction/${txdata}`)
-			).then(async o => o.text());
+			return JSON.stringify(await bchjs.Electrumx.broadcast(txdata));
 		}
 
 		const formData = new FormData();
@@ -643,6 +663,7 @@ const simplebtc = {
 	minimumTransactionAmount:
 		bitcore.bitcoin.BitcoreTransaction.DUST_AMOUNT / satoshiConversion,
 	setBlockchainAPIKey,
+	setFullStackCashAPIToken,
 	transactionFees,
 	transactionFeesSatoshi,
 	Wallet

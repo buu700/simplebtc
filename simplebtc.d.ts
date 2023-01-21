@@ -101,7 +101,7 @@ declare module 'simplebtc' {
 						localCurrency?: string;
 						uncompressedPublicKey?: boolean;
 				  }
-		);
+		) ;
 	}
 
 	/** Minimum ("dust") transaction amount. */
@@ -120,4 +120,7 @@ declare module 'simplebtc' {
 
 	/** Sets Blockchain.com API key. */
 	const setBlockchainAPIKey: (apiKey: string) => void;
+
+	/** Sets FullStack.Cash API token. */
+	const setFullStackCashAPIToken: (apiToken: string) => void;
 }

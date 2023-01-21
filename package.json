@@ -1,6 +1,6 @@
 {
 	"name": "simplebtc",
-	"version": "6.0.0",
+	"version": "6.0.1",
 	"description": "High-level Bitcoin library and command line tool",
 	"main": "dist/simplebtc.js",
 	"types": "simplebtc.d.ts",
@@ -30,6 +30,7 @@
 		"url": "https://github.com/buu700/simplebtc/issues"
 	},
 	"dependencies": {
+		"@psf/bch-js": "^6",
 		"@types/bitcore-lib": "^0",
 		"@types/bitcore-lib-cash": "^8",
 		"bitcore-lib": "^8",
