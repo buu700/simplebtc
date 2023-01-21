@@ -36,6 +36,7 @@
 		"bitcore-lib": "^8",
 		"bitcore-lib-cash": "^8",
 		"form-data": "*",
+		"lodash": "^4",
 		"node-fetch": "*",
 		"rxjs": "^7",
 		"whatwg-fetch": "*"

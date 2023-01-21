@@ -21,6 +21,7 @@ const bitcore = {
 
 const BCHJS = require('@psf/bch-js');
 const FormData = require('form-data');
+const memoize = require('lodash/memoize');
 const {Observable, ReplaySubject, Subject} = require('rxjs');
 const {map, mergeMap} = require('rxjs/operators');
 
@@ -150,7 +151,7 @@ const bchjsLock = async f =>
 		)
 	);
 
-const getExchangeRates = async bitcoinCash => {
+const getExchangeRatesInternal = async bitcoinCash => {
 	const [o, conversionRate] = await Promise.all([
 		request('https://blockchain.info/ticker').then(async o => o.json()),
 		bitcoinCash ?
@@ -175,6 +176,14 @@ const getExchangeRates = async bitcoinCash => {
 
 	return o;
 };
+
+const getExchangeRates = memoize(async (bitcoinCash = false) => {
+	setTimeout(() => {
+		getExchangeRates.cache.delete(bitcoinCash);
+	}, 10000);
+
+	return getExchangeRatesInternal(bitcoinCash);
+});
 
 const setBlockchainAPIKey = apiKey => {
 	blockchainAPIKey = apiKey;
