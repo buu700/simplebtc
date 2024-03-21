@@ -30,7 +30,7 @@
 		"url": "https://github.com/buu700/simplebtc/issues"
 	},
 	"dependencies": {
-		"@psf/bch-js": "^6",
+		"@psf/bch-js": "https://github.com/buu700/bch-js",
 		"@types/bitcore-lib": "^0",
 		"@types/bitcore-lib-cash": "^8",
 		"bitcore-lib": "^8",
