@@ -20,7 +20,8 @@ module.exports = [
 			alias: {
 				assert: 'assert-browserify',
 				crypto: 'crypto-browserify',
-				stream: 'stream-browserify'
+				stream: 'stream-browserify',
+				vm: 'vm-browserify'
 			}
 		}
 	}

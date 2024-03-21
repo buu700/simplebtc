@@ -55,6 +55,7 @@
 		"husky": "*",
 		"process": "*",
 		"stream-browserify": "*",
+		"vm-browserify": "*",
 		"webpack": "^5",
 		"webpack-cli": "^5"
 	},
